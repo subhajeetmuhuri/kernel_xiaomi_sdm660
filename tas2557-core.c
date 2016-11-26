@@ -76,9 +76,9 @@ static void tas2557_load_configuration(struct tas2557_priv *pTAS2557,
 #define TAS2557_BLOCK_CFG_CAL_A			0x10
 #define TAS2557_BLOCK_CFG_CAL_B			0x20
 
-static unsigned int p_tas2557_dr_boost_data[] = {
-	TAS2557_DRBOOST_CTL_REG, 0x08,	//enable, 0x0c=disable
-	TAS2557_DRBOOST_CFG_REG, 0x03,	//threshold -18dB +hysteresis 4dB
+static unsigned int p_tas2557_dboost_data[] = {
+	TAS2557_DBOOST_CTL_REG, 0x08,	//enable, 0x0c=disable
+	TAS2557_DBOOST_CFG_REG, 0x03,	//threshold -18dB +hysteresis 4dB
 	0xFFFFFFFF, 0xFFFFFFFF
 };
 
@@ -284,7 +284,7 @@ int tas2557_load_default(struct tas2557_priv *pTAS2557)
 {
 	int ret = 0;
 	
-	ret = tas2557_dev_load_blk_data(pTAS2557, p_tas2557_dr_boost_data);
+	ret = tas2557_dev_load_blk_data(pTAS2557, p_tas2557_dboost_data);
 	if(ret < 0) goto err;
 	
 	/* This is not required for PG1.0 and 2.1, only PG2.0*/
