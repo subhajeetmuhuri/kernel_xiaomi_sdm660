@@ -120,7 +120,7 @@ static unsigned int p_tas2557_boost_4Ohm_data[] =
 /* This is only required for PG2.0*/
 static unsigned int p_tas2557_isense_threshold_data[] =
 {
-	TAS2557_ISENSE_THRESHOLD,	0x04, 0, 0, 0, 0,	// Make Isense threshold zero
+	TAS2557_ISENSE_THRESHOLD, 0x04, 0, 0, 0, 0,	// Make Isense threshold zero
 	0xFFFFFFFF, 0xFFFFFFFF
 };
 
@@ -205,7 +205,7 @@ static int tas2557_dev_load_blk_data(struct tas2557_priv *pTAS2557,
 
 	do{
 		nRegister = pData[nLength];
-		nLoop = pData[nLength + 1];
+		nSize = pData[nLength + 1];
 		nData = &pData[nLength + 2];
 		if (nRegister == TAS2557_MDELAY){
 			mdelay(nData[0]);
@@ -835,7 +835,7 @@ static void tas2557_load_configuration(struct tas2557_priv *pTAS2557,
 		pTAS2557->mbLoadConfigurationPostPowerUp = false;
 	} else {
 		dev_dbg(pTAS2557->dev,
-			"TAS2557 was powered down -> set flag to load configuration data when OS powers up the TAS2557 the next time\n");
+			"TAS2557 was powered down\n");
 		if (pNewConfiguration->mnPLL != pCurrentConfiguration->mnPLL) {
 			dev_dbg(pTAS2557->dev, "TAS2557: load new PLL: %s, block data\n",
 				pNewPLL->mpName);
