@@ -276,6 +276,11 @@ int tas2557_load_platdata(struct tas2557_priv *pTAS2557)
 	int ret = 0;
 	
 	ret = tas2557_setLoad(pTAS2557, pTAS2557->mnLoad);
+	if(pTAS2557->mnDevChl == LEFT_CHANNEL){
+		pTAS2557->update_bits(pTAS2557, TAS2557_ASI_CTRL_REG, 0x06, 0x00);
+	}else if(pTAS2557->mnDevChl == LEFT_CHANNEL){
+		pTAS2557->update_bits(pTAS2557, TAS2557_ASI_CTRL_REG, 0x06, 0x02);
+	}
 		
 	return ret;
 }
@@ -1196,6 +1201,15 @@ int tas2557_parse_dt(struct device *dev,
 		dev_dbg(pTAS2557->dev, "ti,load=%d", pTAS2557->mnLoad);
 	}
 
+	rc = of_property_read_u32(np, "ti,channel", &pTAS2557->mnDevChl);
+	if (rc) {
+		dev_err(pTAS2557->dev, "Looking up %s property in node %s failed %d\n",
+			"ti,channel", np->full_name, rc);
+		ret = -1;
+	}else{
+		dev_dbg(pTAS2557->dev, "ti,channel=%d", pTAS2557->mnDevChl);
+	}
+	
 	pTAS2557->mnResetGPIO = of_get_named_gpio(np,
 				"ti,cdc-reset-gpio", 0);
 	if (pTAS2557->mnResetGPIO < 0) {

@@ -70,7 +70,7 @@
 #define TAS2557_CRC_CHECKSUM_REG		TAS2557_REG(0, 0, 32)
 #define TAS2557_CRC_RESET_REG			TAS2557_REG(0, 0, 33)
 #define TAS2557_DSP_MODE_SELECT_REG		TAS2557_REG(0, 0, 34)
-#define TAS2557_NONAME42_REG			TAS2557_REG(0, 0, 42)
+#define TAS2557_ASI_CTRL_REG			TAS2557_REG(0, 0, 42)
 #define TAS2557_CLK_ERR_CTRL			TAS2557_REG(0, 0, 44)
 #define TAS2557_DBOOST_CFG_REG			TAS2557_REG(0, 0, 52)
 #define TAS2557_POWER_UP_FLAG_REG		TAS2557_REG(0, 0, 100)
@@ -274,6 +274,9 @@
 
 #define TAS2557_FW_NAME     "tas2557_uCDSP.bin"
 
+#define LEFT_CHANNEL	0
+#define RIGHT_CHANNEL	1
+
 typedef struct {
 	unsigned int mnType;
 	unsigned int mnCommands;
@@ -361,6 +364,7 @@ struct tas2557_priv {
 	unsigned int mnCurrentCalibration;
 	int mnCurrentBook;
 	int mnCurrentPage;
+	int mnDevChl;
 	bool mbTILoadActive;
 	bool mbPowerUp;
 	bool mbLoadConfigurationPostPowerUp;
