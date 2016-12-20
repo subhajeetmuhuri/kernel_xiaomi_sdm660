@@ -42,5 +42,6 @@ extern int tas2557_set_program(struct tas2557_priv *pTAS2557,
 extern int tas2557_set_calibration(struct tas2557_priv *pTAS2557,
 	int nCalibration);
 extern int tas2557_load_default(struct tas2557_priv *pTAS2557);
+int tas2557_setChannel(struct tas2557_priv *pTAS2557, int channel);
 	
 #endif /* _TAS2557_CORE_H */

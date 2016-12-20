@@ -88,13 +88,11 @@ static unsigned int p_tas2557_SA_chl_right_data[] =
 	0xFFFFFFFF, 0xFFFFFFFF
 };
 
-/*
 static unsigned int p_tas2557_SA_swap_data[] =
 {
 	TAS2557_SA_COEFF_SWAP_REG, 0x04, 0x00, 0x00, 0x00, 0x01, // when DSP powered on, swap needed to update coefficient memory
 	0xFFFFFFFF, 0xFFFFFFFF
 };
-*/
 
 static unsigned int p_tas2557_dboost_data[] = {
 	TAS2557_DBOOST_CTL_REG, 0x08,	//enable, 0x0c=disable
@@ -290,16 +288,31 @@ err:
 	return ret;
 }
 
+int tas2557_setChannel(struct tas2557_priv *pTAS2557, int channel)
+{
+	int ret = -1;
+	
+	if(channel == LEFT_CHANNEL){
+		ret = pTAS2557->update_bits(pTAS2557, TAS2557_ASI_CTRL_REG, 0x06, 0x00);	//ROM mode
+		ret = tas2557_dev_load_blk_data(pTAS2557, p_tas2557_SA_chl_left_data);
+	}else if(channel == RIGHT_CHANNEL){
+		ret = pTAS2557->update_bits(pTAS2557, TAS2557_ASI_CTRL_REG, 0x06, 0x02);	//ROM mode
+		ret = tas2557_dev_load_blk_data(pTAS2557, p_tas2557_SA_chl_right_data);
+	}
+		
+	if(pTAS2557->mbPowerUp && (ret >= 0)){
+		ret = tas2557_dev_load_blk_data(pTAS2557, p_tas2557_SA_swap_data);
+	}
+	
+	return ret;
+}
+
 int tas2557_load_platdata(struct tas2557_priv *pTAS2557)
 {
 	int ret = 0;
 	
 	ret = tas2557_setLoad(pTAS2557, pTAS2557->mnLoad);
-	if(pTAS2557->mnDevChl == LEFT_CHANNEL){
-		pTAS2557->update_bits(pTAS2557, TAS2557_ASI_CTRL_REG, 0x06, 0x00);	//ROM mode
-	}else if(pTAS2557->mnDevChl == LEFT_CHANNEL){
-		pTAS2557->update_bits(pTAS2557, TAS2557_ASI_CTRL_REG, 0x06, 0x02);	//ROM mode
-	}
+	ret = tas2557_setChannel(pTAS2557, pTAS2557->mnDevChl);
 		
 	return ret;
 }
