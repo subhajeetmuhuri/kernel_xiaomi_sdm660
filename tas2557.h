@@ -33,13 +33,15 @@
 #define TAS2557_BOOKCTL_PAGE			0
 #define TAS2557_BOOKCTL_REG			127
 
-#define TAS2557_REG(book, page, reg)		(((book * 256 * 128) + \
-						 (page * 128)) + reg)
+/* 0000 0000 0BBB BBBB BPPP PPPP PRRR RRRR */
 
-#define TAS2557_BOOK_ID(reg)			(reg / (256 * 128))
-#define TAS2557_PAGE_ID(reg)			((reg % (256 * 128)) / 128)
-#define TAS2557_BOOK_REG(reg)			(reg % (256 * 128))
-#define TAS2557_PAGE_REG(reg)			((reg % (256 * 128)) % 128)
+#define TAS2557_REG(book, page, reg)		((((unsigned int)book * 256 * 128) + \
+						 ((unsigned int)page * 128)) + reg)
+
+#define TAS2557_BOOK_ID(reg)			((unsigned char)(reg / (256 * 128)))
+#define TAS2557_PAGE_ID(reg)			((unsigned char)((reg % (256 * 128)) / 128))
+#define TAS2557_BOOK_REG(reg)			((unsigned char)(reg % (256 * 128)))
+#define TAS2557_PAGE_REG(reg)			((unsigned char)((reg % (256 * 128)) % 128))
 
 /* Book0, Page0 registers */
 #define TAS2557_SW_RESET_REG			TAS2557_REG(0, 0, 1)
@@ -366,8 +368,8 @@ struct tas2557_priv {
 	unsigned int mnCurrentSampleRate;
 	unsigned int mnCurrentConfiguration;
 	unsigned int mnCurrentCalibration;
-	int mnCurrentBook;
-	int mnCurrentPage;
+	unsigned char mnCurrentBook;
+	unsigned char mnCurrentPage;
 	int mnDevChl;
 	bool mbTILoadActive;
 	bool mbPowerUp;
