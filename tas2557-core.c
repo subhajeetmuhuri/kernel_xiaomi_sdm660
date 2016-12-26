@@ -94,54 +94,6 @@ static unsigned int p_tas2557_SA_swap_data[] =
 	0xFFFFFFFF, 0xFFFFFFFF
 };
 
-static unsigned int p_tas2557_dboost_data[] = {
-	TAS2557_DBOOST_CTL_REG, 0x08,	//enable, 0x0c=disable
-	TAS2557_DBOOST_CFG_REG, 0x03,	//threshold -18dB +hysteresis 4dB
-	0xFFFFFFFF, 0xFFFFFFFF
-};
-
-//This is only needed for PG1.0
-static unsigned int p_tas2557_vpred_comp_data[] =
-{
-//Reverse attenuation compensation for Vpred 0.5dB
-	TAS2557_VPRED_COMP_REG, 0x04, 0x43, 0xca, 0xd0, 0x22,
-	0xFFFFFFFF, 0xFFFFFFFF
-};
-
-//This is only needed for PG1.0.
-static unsigned int p_tas2557_thermal_foldback_data[] = {
-	TAS2557_THERMAL_FOLDBACK_REG, 0x04, 0x48, 0x00, 0x00, 0x00,	//disable
-	0xFFFFFFFF, 0xFFFFFFFF
-};
-
-static unsigned int p_tas2557_boost_8Ohm_data[] =
-{
-	TAS2557_BOOST_HEADROOM, 0x04, 0x04, 0xcc, 0xcc, 0xcc,	// boost headroom 600mv
-    TAS2557_BOOSTOFF_EFFICIENCY, 0x04, 0x67, 0xae,0x14,0x7a, //boost off efficiency 0.81
-	0xFFFFFFFF, 0xFFFFFFFF
-};
-
-static unsigned int p_tas2557_boost_6Ohm_data[] =
-{
-	TAS2557_BOOST_HEADROOM, 0x04, 0x06, 0x66, 0x66, 0x66, // boost headroom 800mv
-	0xFFFFFFFF, 0xFFFFFFFF
-};
-
-static unsigned int p_tas2557_boost_4Ohm_data[] =
-{
-	TAS2557_BOOST_HEADROOM, 0x04, 0x06, 0x66, 0x66, 0x66, // boost headroom 800mv
-	TAS2557_BOOSTON_EFFICIENCY, 0x04, 0x73, 0x33, 0x33, 0x33,
-	TAS2557_BOOSTOFF_EFFICIENCY, 0x04, 0x60, 0x00,0x00,0x00, //boost off efficiency 0.75
-	0xFFFFFFFF, 0xFFFFFFFF
-};
-
-/* This is only required for PG2.0*/
-static unsigned int p_tas2557_isense_threshold_data[] =
-{
-	TAS2557_ISENSE_THRESHOLD, 0x04, 0, 0, 0, 0,	// Make Isense threshold zero
-	0xFFFFFFFF, 0xFFFFFFFF
-};
-
 #define TAS2557_STARTUP_DATA_PLL_CLKIN_INDEX 3
 static unsigned int p_tas2557_startup_data[] = {
 	TAS2557_CLK_ERR_CTRL, 0x03,	//enable clock error detection
@@ -256,38 +208,6 @@ static int tas2557_dev_load_blk_data(struct tas2557_priv *pTAS2557,
 	return ret;
 }
 
-int tas2557_setLoad(struct tas2557_priv *pTAS2557, int load)
-{
-	int ret = 0;
-
-	ret = pTAS2557->write(pTAS2557, 
-			TAS2557_SNS_CTRL_REG, (load&0x03)<<1);
-	if(ret<0)
-		goto err;
-	
-	switch(load)
-	{
-		case 0:	//8Ohm
-		ret = tas2557_dev_load_blk_data(pTAS2557, 
-			p_tas2557_boost_8Ohm_data);
-		break;
-		
-		case 1:	//6Ohm
-		ret = tas2557_dev_load_blk_data(pTAS2557, 
-			p_tas2557_boost_6Ohm_data);
-		break;
-		
-		case 2:	//4Ohm
-		ret = tas2557_dev_load_blk_data(pTAS2557, 
-			p_tas2557_boost_4Ohm_data);
-		break;
-	}
-	
-err:	
-	
-	return ret;
-}
-
 int tas2557_setChannel(struct tas2557_priv *pTAS2557, int channel)
 {
 	int ret = -1;
@@ -311,7 +231,6 @@ int tas2557_load_platdata(struct tas2557_priv *pTAS2557)
 {
 	int ret = 0;
 	
-	ret = tas2557_setLoad(pTAS2557, pTAS2557->mnLoad);
 	ret = tas2557_setChannel(pTAS2557, pTAS2557->mnDevChl);
 		
 	return ret;
@@ -321,25 +240,8 @@ int tas2557_load_default(struct tas2557_priv *pTAS2557)
 {
 	int ret = 0;
 	
-	ret = tas2557_dev_load_blk_data(pTAS2557, p_tas2557_dboost_data);
-	if(ret < 0) goto err;
-	
-	/* This is not required for PG1.0 and 2.1, only PG2.0*/
-	if(pTAS2557->mnPGID 
-		== TAS2557_PG_VERSION_2P0)
-		ret = tas2557_dev_load_blk_data(pTAS2557, 
-				p_tas2557_isense_threshold_data);
-				
-	if(pTAS2557->mnPGID 
-		== TAS2557_PG_VERSION_1P0){
-		tas2557_dev_load_blk_data(pTAS2557, p_tas2557_vpred_comp_data);
-		tas2557_dev_load_blk_data(pTAS2557, p_tas2557_thermal_foldback_data);
-	}
-	
-	tas2557_load_platdata(pTAS2557);
-	
-err:
-	
+	ret = tas2557_load_platdata(pTAS2557);
+		
 	return ret;
 }
 
