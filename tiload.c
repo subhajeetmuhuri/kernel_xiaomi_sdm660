@@ -44,67 +44,17 @@
 /* enable debug prints in the driver */
 #define DEBUG
 
-#ifdef DEBUG
-#define dprintk(x...)   printk(x)
-#else
-#define dprintk(x...)
-#endif
-
-//#ifdef TI_LOAD
-
-/* Function prototypes */
-#ifdef REG_DUMP
-static void dump_page(struct i2c_client *i2c, u8 page);
-#endif
-
-/* externs */
-//extern int aic3262_change_page(struct snd_soc_codec *codec, u8 new_page);
-//extern int aic3262_change_book(struct snd_soc_codec *codec, u8 new_book);
-//extern int aic3262_write(struct snd_soc_codec *codec, unsigned int reg,
-//             unsigned int value);
-
 static struct cdev *tiload_cdev;
 static int tiload_major = 0;	/* Dynamic allocation of Mjr No. */
 static int tiload_opened = 0;	/* Dynamic allocation of Mjr No. */
 static struct tas2557_priv *g_TAS2557;
 struct class *tiload_class;
 static unsigned int magic_num = 0x00;
-//static int (*codec_write) (struct snd_soc_codec *, unsigned int, unsigned int) = 0;
-//static unsigned int (*codec_read) (struct snd_soc_codec *, unsigned int) = 0; 
 
 static char gPage = 0;
 static char gBook = 0;
 /******************************** Debug section *****************************/
 
-#ifdef REG_DUMP
-/*
- *----------------------------------------------------------------------------
- * Function : dump_page
- * Purpose  : Read and display one codec register page, for debugging purpose
- *----------------------------------------------------------------------------
- */
-static void dump_page(struct i2c_client *i2c, u8 page)
-{
-/*
-    int i;
-    u8 data;
-    u8 test_page_array[8];
-
-    dprintk("TiLoad DRIVER : %s\n", __FUNCTION__);
-//    aic3262_change_page(codec, page);
-
-    data = 0x0;
-
-    i2c_master_send(i2c, data, 1);
-    i2c_master_recv(i2c, test_page_array, 8);
-
-    printk("\n------- aic3262 PAGE %d DUMP --------\n", page);
-    for (i = 0; i < 8; i++) {
-        printk(" [ %d ] = 0x%x\n", i, test_page_array[i]);
-    }
-*/
-}
-#endif
 
 /*
  *----------------------------------------------------------------------------
@@ -115,12 +65,15 @@ static void dump_page(struct i2c_client *i2c, u8 page)
  */
 static int tiload_open(struct inode *in, struct file *filp)
 {
-	dprintk("TiLoad DRIVER : %s\n", __FUNCTION__);
+	struct tas2557_priv *pTAS2557 = g_TAS2557; 
+	
+	dev_info(pTAS2557->dev, "%s\n", __FUNCTION__);
+	
 	if (tiload_opened) {
-		printk("%s device is already opened\n", "tiload");
-		printk("%s: only one instance of driver is allowed\n", "tiload");
+		dev_info(pTAS2557->dev,"%s device is already opened\n", "tiload");
 		return -1;
 	}
+	filp->private_data = (void*)pTAS2557;
 	tiload_opened++;
 	return 0;
 }
@@ -134,7 +87,10 @@ static int tiload_open(struct inode *in, struct file *filp)
  */
 static int tiload_release(struct inode *in, struct file *filp)
 {
-	dprintk("TiLoad DRIVER : %s\n", __FUNCTION__);
+	struct tas2557_priv *pTAS2557 = (struct tas2557_priv *)filp->private_data;
+	
+	dev_info(pTAS2557->dev, "%s\n", __FUNCTION__);
+	filp->private_data = NULL;
 	tiload_opened--;
 	return 0;
 }
@@ -147,30 +103,31 @@ static int tiload_release(struct inode *in, struct file *filp)
  * Purpose  : read from codec
  *----------------------------------------------------------------------------
  */
-static ssize_t tiload_read(struct file *file, char __user * buf,
+static ssize_t tiload_read(struct file *filp, char __user * buf,
 	size_t count, loff_t * offset)
 {
+	struct tas2557_priv *pTAS2557 = (struct tas2557_priv *)filp->private_data;
 	static char rd_data[MAX_LENGTH + 1];
-	unsigned int nCompositeRegister = 0, Value;
+	unsigned int nCompositeRegister = 0, Value = 0;
 	//unsigned int n;
 	char reg_addr;
 	size_t size;
 	int ret = 0;
 #ifdef DEBUG
-	int i;
+	//int i;
 #endif
 //    struct i2c_client *i2c = g_codec->control_data;
 
-	dprintk("TiLoad DRIVER : %s\n", __FUNCTION__);
+	dev_info(pTAS2557->dev, "%s\n", __FUNCTION__);
 	if (count > MAX_LENGTH) {
-		printk("Max %d bytes can be read\n", MAX_LENGTH);
+		dev_err(pTAS2557->dev, "Max %d bytes can be read\n", MAX_LENGTH);
 		return -1;
 	}
 
 	/* copy register address from user space  */
 	size = copy_from_user(&reg_addr, buf, 1);
 	if (size != 0) {
-		printk("read: copy_from_user failure\n");
+		dev_err(pTAS2557->dev,"read: copy_from_user failure\n");
 		return -1;
 	}
 
@@ -179,31 +136,31 @@ static ssize_t tiload_read(struct file *file, char __user * buf,
 	nCompositeRegister = BPR_REG(gBook, gPage, reg_addr);
 	if (count == 1) {
 		ret =
-			g_TAS2557->read(g_TAS2557, 0x80000000 | nCompositeRegister, &Value);
+			pTAS2557->read(pTAS2557, 0x80000000 | nCompositeRegister, &Value);
 		if (ret >= 0)
 			rd_data[0] = (char) Value;
 	} else if (count > 1) {
 		ret =
-			g_TAS2557->bulk_read(g_TAS2557, 0x80000000 | nCompositeRegister,
+			pTAS2557->bulk_read(pTAS2557, 0x80000000 | nCompositeRegister,
 			rd_data, size);
 	}
 	if (ret < 0)
-		printk("%s, %d, ret=%d, count=%zu error happen!\n", __FUNCTION__,
-			__LINE__, ret, count);
+		dev_err(pTAS2557->dev,"%s, %d, ret=%d, count=%zu error happen!\n", 
+			__FUNCTION__, __LINE__, ret, count);
 //    size = i2c_master_recv(i2c, rd_data, count);
 #ifdef DEBUG
-	printk(KERN_ERR "read size = %d, reg_addr= %x , count = %d\n",
+	dev_info(pTAS2557->dev, "read size = %d, reg_addr= %x , count = %d\n",
 		(int) size, reg_addr, (int) count);
-	for (i = 0; i < (int) size; i++) {
-		printk(KERN_ERR "rd_data[%d]=%x\n", i, rd_data[i]);
-	}
+//	for (i = 0; i < (int) size; i++) {
+//		dev_dbg(pTAS2557->dev, "rd_data[%d]=%x\n", i, rd_data[i]);
+//	}
 #endif
 	if (size != count) {
-		printk("read %d registers from the codec\n", (int) size);
+		dev_err(pTAS2557->dev, "read %d registers from the codec\n", (int) size);
 	}
 
 	if (copy_to_user(buf, rd_data, size) != 0) {
-		dprintk("copy_to_user failed\n");
+		dev_err(pTAS2557->dev,"copy_to_user failed\n");
 		return -1;
 	}
 
@@ -217,9 +174,10 @@ static ssize_t tiload_read(struct file *file, char __user * buf,
  * Purpose  : write to codec
  *----------------------------------------------------------------------------
  */
-static ssize_t tiload_write(struct file *file, const char __user * buf,
+static ssize_t tiload_write(struct file *filp, const char __user * buf,
 	size_t count, loff_t * offset)
 {
+	struct tas2557_priv *pTAS2557 = (struct tas2557_priv *)filp->private_data;	
 	static char wr_data[MAX_LENGTH + 1];
 	char *pData = wr_data;
 	size_t size;
@@ -229,29 +187,26 @@ static ssize_t tiload_write(struct file *file, const char __user * buf,
 	unsigned int nRegister;
 	int ret = 0;
 #ifdef DEBUG
-	int i;
+	//int i;
 #endif
-//    struct i2c_client *i2c = g_codec->control_data;
-
-	dprintk("TiLoad DRIVER : %s\n", __FUNCTION__);
+	dev_info(pTAS2557->dev, "%s\n", __FUNCTION__);
 
 	if (count > MAX_LENGTH) {
-		printk("Max %d bytes can be read\n", MAX_LENGTH);
+		dev_err(pTAS2557->dev, "Max %d bytes can be read\n", MAX_LENGTH);
 		return -1;
 	}
 
 	/* copy buffer from user space  */
 	size = copy_from_user(wr_data, buf, count);
 	if (size != 0) {
-		printk("copy_from_user failure %d\n", (int) size);
+		dev_err(pTAS2557->dev,"copy_from_user failure %d\n", (int) size);
 		return -1;
 	}
 #ifdef DEBUG
-	printk(KERN_ERR "write size = %zu\n", count);
-	for (i = 0; i < (int) count; i++) {
-
-		printk(KERN_INFO "\nwr_data[%d]=%x\n", i, wr_data[i]);
-	}
+	dev_info(pTAS2557->dev, "write size = %zu\n", count);
+	//for (i = 0; i < (int) count; i++) {
+	//	dev_info(pTAS2557->dev, "wr_data[%d]=%x\n", i, wr_data[i]);
+	//}
 #endif
 	nRegister = wr_data[0];
 	size = count;
@@ -269,15 +224,15 @@ static ssize_t tiload_write(struct file *file, const char __user * buf,
 	nCompositeRegister = BPR_REG(gBook, gPage, nRegister);
 	if (count == 2) {
 		ret =
-			g_TAS2557->write(g_TAS2557, 0x80000000 | nCompositeRegister,
+			pTAS2557->write(pTAS2557, 0x80000000 | nCompositeRegister,
 			pData[1]);
 	} else if (count > 2) {
 		ret =
-			g_TAS2557->bulk_write(g_TAS2557, 0x80000000 | nCompositeRegister,
+			pTAS2557->bulk_write(pTAS2557, 0x80000000 | nCompositeRegister,
 			&pData[1], count - 1);
 	}
 	if (ret < 0)
-		printk("%s, %d, ret=%d, count=%zu, ERROR Happen\n", __FUNCTION__,
+		dev_err(pTAS2557->dev,"%s, %d, ret=%d, count=%zu, ERROR Happen\n", __FUNCTION__,
 			__LINE__, ret, count);
 #else
 	for (n = 1; n < count; n++) {
@@ -290,50 +245,53 @@ static ssize_t tiload_write(struct file *file, const char __user * buf,
 	return size;
 }
 
-static void tiload_route_IO(unsigned int bLock)
+static void tiload_route_IO(struct tas2557_priv *pTAS2557, unsigned int bLock)
 {
 	if (bLock) {
-		g_TAS2557->write(g_TAS2557, 0xAFFEAFFE, 0xBABEBABE);
+		pTAS2557->write(pTAS2557, 0xAFFEAFFE, 0xBABEBABE);
 	} else {
-		g_TAS2557->write(g_TAS2557, 0xBABEBABE, 0xAFFEAFFE);
+		pTAS2557->write(pTAS2557, 0xBABEBABE, 0xAFFEAFFE);
 	}
 }
 
 static long tiload_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
+	struct tas2557_priv *pTAS2557 = (struct tas2557_priv *)filp->private_data;
 	long num = 0;
 	void __user *argp = (void __user *) arg;
 	int val;
 
 	BPR bpr;
 
-	printk(KERN_ERR "tiload_ioctl\n\r");
+	dev_info(pTAS2557->dev, "%s, cmd=0x%x\n", __FUNCTION__, cmd);
 //    if (_IOC_TYPE(cmd) != TILOAD_IOC_MAGIC)
 //        return -ENOTTY;
 
-	dprintk("TiLoad DRIVER : %s\n", __FUNCTION__);
 	switch (cmd) {
 	case TILOAD_IOMAGICNUM_GET:
 		num = copy_to_user(argp, &magic_num, sizeof(int));
 		break;
 	case TILOAD_IOMAGICNUM_SET:
 		num = copy_from_user(&magic_num, argp, sizeof(int));
-		tiload_route_IO(magic_num);
+		dev_info(pTAS2557->dev, "TILOAD_IOMAGICNUM_SET\n");
+		tiload_route_IO(pTAS2557, magic_num);
 		break;
 	case TILOAD_BPR_READ:
 		break;
 	case TILOAD_BPR_WRITE:
 		num = copy_from_user(&bpr, argp, sizeof(BPR));
-		printk("TILOAD_BPR_WRITE: 0x%02X, 0x%02X, 0x%02X\n\r", bpr.nBook,
+		dev_info(pTAS2557->dev,"TILOAD_BPR_WRITE: 0x%02X, 0x%02X, 0x%02X\n\r", bpr.nBook,
 			bpr.nPage, bpr.nRegister);
 		break;
+	case TILOAD_IOCTL_SET_CHL:
+		break;		
 	case TILOAD_IOCTL_SET_CONFIG:
 		num = copy_from_user(&val, argp, sizeof(val));
-		g_TAS2557->set_config(g_TAS2557, val);
+		pTAS2557->set_config(pTAS2557, val);
 		break;
 	case TILOAD_IOCTL_SET_CALIBRATION:
 		num = copy_from_user(&val, argp, sizeof(val));
-		g_TAS2557->set_calibration(g_TAS2557, val);
+		pTAS2557->set_calibration(pTAS2557, val);
 		break;				
 	default:
 		break;
@@ -363,19 +321,18 @@ int tiload_driver_init(struct tas2557_priv *pTAS2557)
 	int result;
 
 	dev_t dev = MKDEV(tiload_major, 0);
-	dprintk("TiLoad DRIVER : %s\n", __FUNCTION__);
 	g_TAS2557 = pTAS2557;
 
-	dprintk("allocating dynamic major number\n");
+	dev_info(pTAS2557->dev, "%s\n", __FUNCTION__);
 
 	result = alloc_chrdev_region(&dev, 0, 1, DEVICE_NAME);
 	if (result < 0) {
-		dprintk("cannot allocate major number %d\n", tiload_major);
+		dev_err(pTAS2557->dev, "cannot allocate major number %d\n", tiload_major);
 		return result;
 	}
 	tiload_class = class_create(THIS_MODULE, DEVICE_NAME);
 	tiload_major = MAJOR(dev);
-	dprintk("allocated Major Number: %d\n", tiload_major);
+	dev_info(pTAS2557->dev,"allocated Major Number: %d\n", tiload_major);
 
 	tiload_cdev = cdev_alloc();
 	cdev_init(tiload_cdev, &tiload_fops);
@@ -383,15 +340,15 @@ int tiload_driver_init(struct tas2557_priv *pTAS2557)
 	tiload_cdev->ops = &tiload_fops;
 
 	if (device_create(tiload_class, NULL, dev, NULL, "tiload_node") == NULL)
-		dprintk(KERN_ERR "Device creation failed\n");
+		dev_err(pTAS2557->dev, "Device creation failed\n");
 
 	if (cdev_add(tiload_cdev, dev, 1) < 0) {
-		dprintk("tiload_driver: cdev_add failed \n");
+		dev_err(pTAS2557->dev,"tiload_driver: cdev_add failed \n");
 		unregister_chrdev_region(dev, 1);
 		tiload_cdev = NULL;
 		return 1;
 	}
-	printk("Registered TiLoad driver, Major number: %d \n", tiload_major);
+	dev_info(pTAS2557->dev,"Registered TiLoad driver, Major number: %d \n", tiload_major);
 	//class_device_create(tiload_class, NULL, dev, NULL, DEVICE_NAME, 0);
 	return 0;
 }
