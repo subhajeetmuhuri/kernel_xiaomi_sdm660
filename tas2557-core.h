@@ -28,20 +28,20 @@
 
 #include "tas2557.h"
 
-extern int tas2557_parse_dt(struct device *dev,
+int tas2557_parse_dt(struct device *dev,
 			struct tas2557_priv *pTAS2557);
-extern void tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable);
-extern int tas2557_set_sampling_rate(struct tas2557_priv *pTAS2557, 
+void tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable);
+int tas2557_set_sampling_rate(struct tas2557_priv *pTAS2557, 
 	unsigned int nSamplingRate);
-extern int tas2557_set_config(struct tas2557_priv *pTAS2557, int config);
-extern void tas2557_load_fs_firmware(struct tas2557_priv *pTAS2557,
+int tas2557_set_config(struct tas2557_priv *pTAS2557, int config);
+void tas2557_load_fs_firmware(struct tas2557_priv *pTAS2557,
 	char *pFileName);
-extern void tas2557_fw_ready(const struct firmware *pFW, void *pContext);
-extern int tas2557_set_program(struct tas2557_priv *pTAS2557,
+void tas2557_fw_ready(const struct firmware *pFW, void *pContext);
+int tas2557_set_program(struct tas2557_priv *pTAS2557,
 	unsigned int nProgram);
-extern int tas2557_set_calibration(struct tas2557_priv *pTAS2557,
+int tas2557_set_calibration(struct tas2557_priv *pTAS2557,
 	int nCalibration);
-extern int tas2557_load_default(struct tas2557_priv *pTAS2557);
+int tas2557_load_default(struct tas2557_priv *pTAS2557);
 int tas2557_setChannel(struct tas2557_priv *pTAS2557, int channel);
 	
 #endif /* _TAS2557_CORE_H */

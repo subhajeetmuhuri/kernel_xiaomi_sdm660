@@ -284,7 +284,7 @@ static long tiload_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			bpr.nPage, bpr.nRegister);
 		break;
 	case TILOAD_IOCTL_SET_CHL:
-		break;		
+		break;
 	case TILOAD_IOCTL_SET_CONFIG:
 		num = copy_from_user(&val, argp, sizeof(val));
 		pTAS2557->set_config(pTAS2557, val);
@@ -292,7 +292,7 @@ static long tiload_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case TILOAD_IOCTL_SET_CALIBRATION:
 		num = copy_from_user(&val, argp, sizeof(val));
 		pTAS2557->set_calibration(pTAS2557, val);
-		break;				
+		break;
 	default:
 		break;
 	}

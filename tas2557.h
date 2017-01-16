@@ -47,9 +47,9 @@
 #define TAS2557_SW_RESET_REG			TAS2557_REG(0, 0, 1)
 
 #define TAS2557_REV_PGID_REG			TAS2557_REG(0, 0, 3)
-#define TAS2557_PG_VERSION_1P0			0x00
-#define TAS2557_PG_VERSION_2P0			0x10
-#define TAS2557_PG_VERSION_2P1			0x20
+#define TAS2557_PG_VERSION_1P0			0x80
+#define TAS2557_PG_VERSION_2P0			0x90
+#define TAS2557_PG_VERSION_2P1			0xa0
 
 #define TAS2557_POWER_CTRL1_REG			TAS2557_REG(0, 0, 4)
 #define TAS2557_POWER_CTRL2_REG			TAS2557_REG(0, 0, 5)
@@ -283,52 +283,51 @@
 #define LEFT_CHANNEL	0
 #define RIGHT_CHANNEL	1
 
-typedef struct {
+struct TBlock {
 	unsigned int mnType;
 	unsigned int mnCommands;
 	unsigned char *mpData;
-} TBlock;
+};
 
-typedef struct {
+struct TData {
 	char mpName[64];
 	char *mpDescription;
 	unsigned int mnBlocks;
-	TBlock *mpBlocks;
-} TData;
+	struct TBlock *mpBlocks;
+};
 
-typedef struct {
+struct TProgram {
 	char mpName[64];
 	char *mpDescription;
 	unsigned char mnAppMode;
 	unsigned short mnBoost;
-	TData mData;
-} TProgram;
+	struct TData mData;
+};
 
-typedef struct {
+struct TPLL {
 	char mpName[64];
 	char *mpDescription;
-	TBlock mBlock;
-} TPLL;
+	struct TBlock mBlock;
+};
 
-typedef struct {
+struct TConfiguration {
 	char mpName[64];
 	char *mpDescription;
 	unsigned int mnProgram;
 	unsigned int mnPLL;
 	unsigned int mnSamplingRate;
-	TData mData;
-} TConfiguration;
+	struct TData mData;
+};
 
-typedef struct
-{
+struct TCalibration {
 	char mpName[64];
 	char *mpDescription;
 	unsigned int mnProgram;
 	unsigned int mnConfiguration;
-	TBlock mBlock;
-} TCalibration;
+	struct TData mData;
+};
 
-typedef struct {
+struct TFirmware {
 	unsigned int mnFWSize;
 	unsigned int mnChecksum;
 	unsigned int mnPPCVersion;
@@ -340,14 +339,14 @@ typedef struct {
 	unsigned int mnDeviceFamily;
 	unsigned int mnDevice;
 	unsigned int mnPLLs;
-	TPLL *mpPLLs;
+	struct TPLL *mpPLLs;
 	unsigned int mnPrograms;
-	TProgram *mpPrograms;
+	struct TProgram *mpPrograms;
 	unsigned int mnConfigurations;
-	TConfiguration *mpConfigurations;
+	struct TConfiguration *mpConfigurations;
 	unsigned int mnCalibrations;
-	TCalibration *mpCalibrations;
-} TFirmware;
+	struct TCalibration *mpCalibrations;
+};
 
 struct tas2557_register {
 	int book;
@@ -360,10 +359,10 @@ struct tas2557_priv {
 	struct regmap *mpRegmap;
 	int mnLoad;
 	int mnPGID;
-	int mnResetGPIO;	
-	struct mutex dev_lock;	
-	TFirmware *mpFirmware;
-	TFirmware *mpCalFirmware;
+	int mnResetGPIO;
+	struct mutex dev_lock;
+	struct TFirmware *mpFirmware;
+	struct TFirmware *mpCalFirmware;
 	unsigned int mnCurrentProgram;
 	unsigned int mnCurrentSampleRate;
 	unsigned int mnCurrentConfiguration;
@@ -377,26 +376,26 @@ struct tas2557_priv {
 	bool mbLoadCalibrationPostPowerUp;
 	unsigned int mnPowerCtrl;
 	bool mbCalibrationLoaded;
-	int (*read) (struct tas2557_priv * pTAS2557, unsigned int reg,
+	int (*read)(struct tas2557_priv * pTAS2557, unsigned int reg,
 		unsigned int *pValue);
-	int (*write) (struct tas2557_priv * pTAS2557, unsigned int reg,
+	int (*write)(struct tas2557_priv * pTAS2557, unsigned int reg,
 		unsigned int Value);
-	int (*bulk_read) (struct tas2557_priv * pTAS2557, unsigned int reg,
+	int (*bulk_read)(struct tas2557_priv * pTAS2557, unsigned int reg,
 		unsigned char *pData, unsigned int len);
-	int (*bulk_write) (struct tas2557_priv * pTAS2557, unsigned int reg,
+	int (*bulk_write)(struct tas2557_priv * pTAS2557, unsigned int reg,
 		unsigned char *pData, unsigned int len);
-	int (*update_bits) (struct tas2557_priv * pTAS2557, unsigned int reg,
+	int (*update_bits)(struct tas2557_priv * pTAS2557, unsigned int reg,
 		unsigned int mask, unsigned int value);
-	int (*set_config) (struct tas2557_priv *pTAS2557, int config);
-	int (*set_calibration) (struct tas2557_priv *pTAS2557, int calibration);	
-#ifdef CONFIG_TAS2557_CODEC	
+	int (*set_config)(struct tas2557_priv *pTAS2557, int config);
+	int (*set_calibration)(struct tas2557_priv *pTAS2557, int calibration);
+#ifdef CONFIG_TAS2557_CODEC
 	struct mutex codec_lock;
-#endif	
-#ifdef CONFIG_TAS2557_MISC	
+#endif
+#ifdef CONFIG_TAS2557_MISC
 	int mnDBGCmd;
-	int mnCurrentReg;	
+	int mnCurrentReg;
 	struct mutex file_lock;
-#endif	
+#endif
 };
 
 #endif /* _TAS2557_H */

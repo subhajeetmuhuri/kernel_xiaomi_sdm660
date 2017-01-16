@@ -165,14 +165,14 @@ static ssize_t tas2557_file_read(struct file *file, char *buf, size_t count, lof
 		
 		case TIAUDIO_CMD_PROGRAM:
 		{
-			if(g_logEnable) dev_info(pTAS2557->dev,
+			if (g_logEnable) dev_info(pTAS2557->dev,
 						"TIAUDIO_CMD_PROGRAM: count = %d\n", 
 						(int)count);
 
-			if(count == PROGRAM_BUF_SIZE){
+			if (count == PROGRAM_BUF_SIZE) {
 				p_kBuf = (unsigned char *)kzalloc(count, GFP_KERNEL);
-				if(p_kBuf != NULL){
-					TProgram * pProgram = 
+				if (p_kBuf != NULL) {
+					struct TProgram * pProgram = 
 						&(pTAS2557->mpFirmware->mpPrograms[pTAS2557->mnCurrentProgram]);
 					
 					p_kBuf[0] = pTAS2557->mpFirmware->mnPrograms;							
@@ -188,27 +188,24 @@ static ssize_t tas2557_file_read(struct file *file, char *buf, size_t count, lof
 						/* Failed to copy all the data, exit */
 						dev_err(pTAS2557->dev, "copy to user fail %d\n", ret);
 					}
-					
 					kfree(p_kBuf);
-				}else{
+				} else
 					dev_err(pTAS2557->dev, "read no mem\n");
-				}				
-			}else{
+			}else
 				dev_err(pTAS2557->dev, "read buffer not sufficient\n");
-			}
 		}
 		break;
 		
 		case TIAUDIO_CMD_CONFIGURATION:
 		{
-			if(g_logEnable) dev_info(pTAS2557->dev,
+			if (g_logEnable) dev_info(pTAS2557->dev,
 						"TIAUDIO_CMD_CONFIGURATION: count = %d\n", 
 						(int)count);
 
 			if(count == CONFIGURATION_BUF_SIZE){
 				p_kBuf = (unsigned char *)kzalloc(count, GFP_KERNEL);
 				if(p_kBuf != NULL){
-					TConfiguration * pConfiguration = 
+					struct TConfiguration * pConfiguration = 
 						&(pTAS2557->mpFirmware->mpConfigurations[pTAS2557->mnCurrentConfiguration]);
 
 					p_kBuf[0] = pTAS2557->mpFirmware->mnConfigurations;											
@@ -291,7 +288,7 @@ static ssize_t tas2557_file_read(struct file *file, char *buf, size_t count, lof
 			if(count == 4){
 				p_kBuf = (unsigned char *)kzalloc(count, GFP_KERNEL);
 				if(p_kBuf != NULL){				
-					TConfiguration *pConfiguration = 
+					struct TConfiguration *pConfiguration = 
 						&(pTAS2557->mpFirmware->mpConfigurations[pTAS2557->mnCurrentConfiguration]);
 
 					p_kBuf[0] = (pConfiguration->mnSamplingRate&0x000000ff);
