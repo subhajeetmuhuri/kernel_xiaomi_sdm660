@@ -491,9 +491,11 @@ static int tas2557_resume(struct device *dev)
 
 	pProgram = &(pTAS2557->mpFirmware->mpPrograms[pTAS2557->mnCurrentProgram]);
 	if (pTAS2557->mbPowerUp && (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE)) {
-		dev_dbg(pTAS2557->dev, "%s, start Die Temp check timer\n", __func__);
-		hrtimer_start(&pTAS2557->mtimer,
-			ns_to_ktime((u64)LOW_TEMPERATURE_CHECK_PERIOD * NSEC_PER_MSEC), HRTIMER_MODE_REL);
+		if (!hrtimer_active(&pTAS2557->mtimer)) {
+			dev_dbg(pTAS2557->dev, "%s, start Die Temp check timer\n", __func__);
+			hrtimer_start(&pTAS2557->mtimer,
+				ns_to_ktime((u64)LOW_TEMPERATURE_CHECK_PERIOD * NSEC_PER_MSEC), HRTIMER_MODE_REL);
+		}
 	}
 
 end:
