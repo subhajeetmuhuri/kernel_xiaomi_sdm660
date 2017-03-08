@@ -459,11 +459,12 @@ end:
 	return;
 }
 
-int tas2557_suspend(struct i2c_client *pClient, pm_message_t mesg)
+#ifdef CONFIG_PM_SLEEP
+static int tas2557_suspend(struct device *dev)
 {
-	struct tas2557_priv *pTAS2557 = i2c_get_clientdata(pClient);
+	struct tas2557_priv *pTAS2557 = dev_get_drvdata(dev);
 
-	dev_dbg(pTAS2557->dev, "%s, power status = %d\n", __func__, mesg.event);
+	dev_dbg(pTAS2557->dev, "%s\n", __func__);
 	if (hrtimer_active(&pTAS2557->mtimer)) {
 		dev_dbg(pTAS2557->dev, "cancel die temp timer\n");
 		hrtimer_cancel(&pTAS2557->mtimer);
@@ -472,11 +473,12 @@ int tas2557_suspend(struct i2c_client *pClient, pm_message_t mesg)
 	return 0;
 }
 
-int tas2557_resume(struct i2c_client *pClient)
+static int tas2557_resume(struct device *dev)
 {
-	struct tas2557_priv *pTAS2557 = i2c_get_clientdata(pClient);
+	struct tas2557_priv *pTAS2557 = dev_get_drvdata(dev);
 	struct TProgram *pProgram;
 
+	dev_dbg(pTAS2557->dev, "%s\n", __func__);
 	if (!pTAS2557->mpFirmware->mpPrograms) {
 		dev_dbg(pTAS2557->dev, "%s, firmware not loaded\n", __func__);
 		goto end;
@@ -498,6 +500,7 @@ end:
 
 	return 0; 
 }
+#endif
 
 static bool tas2557_volatile(struct device *pDev, unsigned int nRegister)
 {
@@ -685,10 +688,19 @@ static const struct of_device_id tas2557_of_match[] = {
 MODULE_DEVICE_TABLE(of, tas2557_of_match);
 #endif
 
+#ifdef CONFIG_PM_SLEEP
+static const struct dev_pm_ops tas2557_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(tas2557_suspend, tas2557_resume)
+};
+#endif
+
 static struct i2c_driver tas2557_i2c_driver = {
 	.driver = {
 			.name = "tas2557",
 			.owner = THIS_MODULE,
+#ifdef CONFIG_PM_SLEEP
+			.pm = &tas2557_pm_ops,
+#endif
 #if defined(CONFIG_OF)
 			.of_match_table = of_match_ptr(tas2557_of_match),
 #endif
@@ -696,8 +708,6 @@ static struct i2c_driver tas2557_i2c_driver = {
 	.probe = tas2557_i2c_probe,
 	.remove = tas2557_i2c_remove,
 	.id_table = tas2557_i2c_id,
-	.suspend = tas2557_suspend,
-	.resume = tas2557_resume,
 };
 
 module_i2c_driver(tas2557_i2c_driver);
