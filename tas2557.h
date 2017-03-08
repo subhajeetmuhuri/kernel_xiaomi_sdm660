@@ -3,16 +3,12 @@
 ** Copyright (c) 2016  Texas Instruments Inc.
 **
 ** This program is free software; you can redistribute it and/or modify it under
-** the terms of the GNU General Public License as published by the Free Software 
+** the terms of the GNU General Public License as published by the Free Software
 ** Foundation; version 2.
 **
 ** This program is distributed in the hope that it will be useful, but WITHOUT
 ** ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 ** FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-**
-** You should have received a copy of the GNU General Public License along with
-** this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
-** Street, Fifth Floor, Boston, MA 02110-1301, USA.
 **
 ** File:
 **     tas2557.h
@@ -25,6 +21,10 @@
 
 #ifndef _TAS2557_H
 #define _TAS2557_H
+
+#include <linux/regmap.h>
+#include <linux/workqueue.h>
+#include <linux/timer.h>
 
 /* Page Control Register */
 #define TAS2557_PAGECTL_REG			0
@@ -53,8 +53,13 @@
 
 #define TAS2557_POWER_CTRL1_REG			TAS2557_REG(0, 0, 4)
 #define TAS2557_POWER_CTRL2_REG			TAS2557_REG(0, 0, 5)
+
 #define TAS2557_SPK_CTRL_REG			TAS2557_REG(0, 0, 6)
-#define TAS2557_MUTE_REG				TAS2557_REG(0, 0, 7)
+/* B0P0R6 - TAS2557_SPK_CTRL_REG */
+#define TAS2557_DAC_GAIN_MASK			(0xf << 3)
+#define TAS2557_DAC_GAIN_SHIFT			0x03
+
+#define TAS2557_MUTE_REG			TAS2557_REG(0, 0, 7)
 #define TAS2557_SNS_CTRL_REG			TAS2557_REG(0, 0, 8)
 #define TAS2557_ADC_INPUT_SEL_REG		TAS2557_REG(0, 0, 9)
 #define TAS2557_DBOOST_CTL_REG			TAS2557_REG(0, 0, 10)
@@ -68,16 +73,18 @@
 #define TAS2557_NONAME18_REG			TAS2557_REG(0, 0, 18)
 #define TAS2557_SAR_SAMPLING_TIME_REG		TAS2557_REG(0, 0, 19)
 #define TAS2557_SAR_ADC1_REG			TAS2557_REG(0, 0, 20)
-#define TAS2557_SAR_ADC2_REG			TAS2557_REG(0, 0, 21)
+#define TAS2557_SAR_ADC2_REG			TAS2557_REG(0, 0, 21)	/* B0_P0_R0x15*/
 #define TAS2557_CRC_CHECKSUM_REG		TAS2557_REG(0, 0, 32)
 #define TAS2557_CRC_RESET_REG			TAS2557_REG(0, 0, 33)
 #define TAS2557_DSP_MODE_SELECT_REG		TAS2557_REG(0, 0, 34)
-#define TAS2557_ASI_CTRL_REG			TAS2557_REG(0, 0, 42)
+#define TAS2557_SAFE_GUARD_REG			TAS2557_REG(0, 0, 37)
+#define TAS2557_ASI_CTL1_REG			TAS2557_REG(0, 0, 42)
 #define TAS2557_CLK_ERR_CTRL			TAS2557_REG(0, 0, 44)
 #define TAS2557_DBOOST_CFG_REG			TAS2557_REG(0, 0, 52)
 #define TAS2557_POWER_UP_FLAG_REG		TAS2557_REG(0, 0, 100)
-#define TAS2557_FLAGS_1				TAS2557_REG(0, 0, 104)
-#define TAS2557_FLAGS_2				TAS2557_REG(0, 0, 108)
+#define TAS2557_FLAGS_1				TAS2557_REG(0, 0, 104)	/* B0_P0_R0x68*/
+#define TAS2557_FLAGS_2				TAS2557_REG(0, 0, 108)	/* B0_P0_R0x6c*/
+
 /* Book0, Page1 registers */
 #define TAS2557_ASI1_DAC_FORMAT_REG		TAS2557_REG(0, 1, 1)
 #define TAS2557_ASI1_ADC_FORMAT_REG		TAS2557_REG(0, 1, 2)
@@ -109,10 +116,10 @@
 #define TAS2557_ASI2_DAC_CLKOUT_REG		TAS2557_REG(0, 1, 36)
 #define TAS2557_ASI2_ADC_CLKOUT_REG		TAS2557_REG(0, 1, 37)
 
-#define TAS2557_GPIO1_PIN_REG			TAS2557_REG(0, 1, 61)
-#define TAS2557_GPIO2_PIN_REG			TAS2557_REG(0, 1, 62)
-#define TAS2557_GPIO3_PIN_REG			TAS2557_REG(0, 1, 63)
-#define TAS2557_GPIO4_PIN_REG			TAS2557_REG(0, 1, 64)
+#define TAS2557_GPIO1_PIN_REG			TAS2557_REG(0, 1, 61)	/*B0_P1_R0x3d */
+#define TAS2557_GPIO2_PIN_REG			TAS2557_REG(0, 1, 62)	/*B0_P1_R0x3e */
+#define TAS2557_GPIO3_PIN_REG			TAS2557_REG(0, 1, 63)	/*B0_P1_R0x3f */
+#define TAS2557_GPIO4_PIN_REG			TAS2557_REG(0, 1, 64)	/*B0_P1_R0x40 */
 #define TAS2557_GPIO5_PIN_REG			TAS2557_REG(0, 1, 65)
 #define TAS2557_GPIO6_PIN_REG			TAS2557_REG(0, 1, 66)
 #define TAS2557_GPIO7_PIN_REG			TAS2557_REG(0, 1, 67)
@@ -120,7 +127,7 @@
 #define TAS2557_GPIO9_PIN_REG			TAS2557_REG(0, 1, 69)
 #define TAS2557_GPIO10_PIN_REG			TAS2557_REG(0, 1, 70)
 
-#define TAS2557_GPI_PIN_REG			TAS2557_REG(0, 1, 77)
+#define TAS2557_GPI_PIN_REG				TAS2557_REG(0, 1, 77)	/*B0_P1_R0x4d */
 #define TAS2557_GPIO_HIZ_CTRL1_REG		TAS2557_REG(0, 1, 79)
 #define TAS2557_GPIO_HIZ_CTRL2_REG		TAS2557_REG(0, 1, 80)
 #define TAS2557_GPIO_HIZ_CTRL3_REG		TAS2557_REG(0, 1, 81)
@@ -147,12 +154,19 @@
 #define TAS2557_ASIM_IFACE8_REG			TAS2557_REG(0, 1, 105)
 #define TAS2557_ASIM_IFACE9_REG			TAS2557_REG(0, 1, 106)
 
+#define TAS2557_INT_GEN1_REG			TAS2557_REG(0, 1, 108)	/* B0_P1_R0x6c */
+#define TAS2557_INT_GEN2_REG			TAS2557_REG(0, 1, 109)
+#define TAS2557_INT_GEN3_REG			TAS2557_REG(0, 1, 110)	/* B0_P1_R0x6e */
+#define TAS2557_INT_GEN4_REG			TAS2557_REG(0, 1, 111)	/* B0_P1_R0x6f */
+#define TAS2557_INT_MODE_REG			TAS2557_REG(0, 1, 114)	/* B0_P1_R0x72 */
+
 #define TAS2557_MAIN_CLKIN_REG			TAS2557_REG(0, 1, 115)
 #define TAS2557_PLL_CLKIN_REG			TAS2557_REG(0, 1, 116)
 #define TAS2557_CLKOUT_MUX_REG			TAS2557_REG(0, 1, 117)
 #define TAS2557_CLKOUT_CDIV_REG			TAS2557_REG(0, 1, 118)
 
 #define TAS2557_HACK_GP01_REG			TAS2557_REG(0, 1, 122)
+
 #define TAS2557_HACK01_REG			TAS2557_REG(0, 2, 10)
 
 #define TAS2557_ISENSE_THRESHOLD		TAS2557_REG(0, 50, 104)
@@ -161,16 +175,16 @@
 #define TAS2557_BOOST_HEADROOM			TAS2557_REG(0, 51, 24)
 #define TAS2557_THERMAL_FOLDBACK_REG	TAS2557_REG(0, 51, 100)
 
-#define TAS2557_VPRED_COMP_REG			TAS2557_REG(0, 53, 24)
-#define TAS2557_SA_COEFF_SWAP_REG		TAS2557_REG(0, 53, 44)
+#define TAS2557_SA_PG2P1_CHL_CTRL_REG	TAS2557_REG(0, 53, 20)	/* B0_P0x35_R0x14 */
+#define TAS2557_SA_COEFF_SWAP_REG		TAS2557_REG(0, 53, 44)	/* B0_P0x35_R0x2c */
 
-#define TAS2557_SA_CHL_CTRL_REG		TAS2557_REG(0, 58, 120)
+#define TAS2557_SA_PG1P0_CHL_CTRL_REG	TAS2557_REG(0, 58, 120)	/* B0_P0x3a_R0x78 */
+
 
 #define TAS2557_TEST_MODE_REG			TAS2557_REG(0, 253, 13)
+#define TAS2557_BROADCAST_REG			TAS2557_REG(0, 253, 54)
 #define TAS2557_CRYPTIC_REG			TAS2557_REG(0, 253, 71)
 
-//#define TAS2557__REG      TAS2557_REG(0, 1, )
-//#define TAS2557__REG      TAS2557_REG(1, 0, )
 #define TAS2557_DAC_INTERPOL_REG		TAS2557_REG(100, 0, 1)
 #define TAS2557_SOFT_MUTE_REG			TAS2557_REG(100, 0, 7)
 #define TAS2557_PLL_P_VAL_REG			TAS2557_REG(100, 0, 27)
@@ -183,6 +197,10 @@
 #define TAS2557_ISENSE_DIV_REG			TAS2557_REG(100, 0, 42)
 #define TAS2557_RAMP_CLK_DIV_MSB_REG		TAS2557_REG(100, 0, 43)
 #define TAS2557_RAMP_CLK_DIV_LSB_REG		TAS2557_REG(100, 0, 44)
+
+#define TAS2557_XMEM_44_REG				TAS2557_REG(130, 2, 64)	/* B0x82_P0x02_R0x40 */
+#define TAS2557_DIE_TEMP_REG			TAS2557_REG(130, 2, 124)	/* B0x82_P0x02_R0x7C */
+
 /* Bits */
 /* B0P0R4 - TAS2557_POWER_CTRL1_REG */
 #define TAS2557_SW_SHUTDOWN			(0x1 << 0)
@@ -197,9 +215,6 @@
 #define TAS2557_ISENSE_ENABLE			(0x1 << 1)
 #define TAS2557_BOOST_ENABLE			(0x1 << 5)
 #define TAS2557_CLASSD_ENABLE			(0x1 << 7)
-
-/* B0P0R6 - TAS2557_SPK_CTRL_REG */
-#define TAS2557_DAC_GAIN_MASK			(0xf << 3)
 
 /* B0P0R7 - TAS2557_MUTE_REG */
 #define TAS2557_CLASSD_MUTE			(0x1 << 0)
@@ -268,7 +283,7 @@
 #define TAS2557_PLL_P_VAL_MASK			(0x3f << 0)
 
 /* B100P0R28 - TAS2557_PLL_J_VAL_REG */
-#define TAS2557_PLL_J_VAL_MASK			((unsigned int ) (0x7f << 0))
+#define TAS2557_PLL_J_VAL_MASK			((unsigned int) (0x7f << 0))
 #define TAS2557_PLL_J_VAL_MASKX	0x00
 
 /* B100P0R29-30 - TAS2557_PLL_D_VAL_MSB/LSB_REG */
@@ -279,12 +294,18 @@
 #define TAS2557_DSP_CLK_FROM_PLL		(0x1 << 5)
 
 #define TAS2557_FW_NAME     "tas2557_uCDSP.bin"
+#define TAS2557_PG1P0_FW_NAME     "tas2557_pg1p0_uCDSP.bin"
 
-#define LEFT_CHANNEL	0
-#define RIGHT_CHANNEL	1
+#define TAS2557_APP_ROM1MODE	0
+#define TAS2557_APP_ROM2MODE	1
+#define TAS2557_APP_TUNINGMODE	2
 
 struct TBlock {
 	unsigned int mnType;
+	unsigned char mbPChkSumPresent;
+	unsigned char mnPChkSum;
+	unsigned char mbYChkSumPresent;
+	unsigned char mnYChkSum;
 	unsigned int mnCommands;
 	unsigned char *mpData;
 };
@@ -376,26 +397,49 @@ struct tas2557_priv {
 	bool mbLoadCalibrationPostPowerUp;
 	unsigned int mnPowerCtrl;
 	bool mbCalibrationLoaded;
-	int (*read)(struct tas2557_priv * pTAS2557, unsigned int reg,
+	int (*read)(struct tas2557_priv *pTAS2557,
+		unsigned int reg,
 		unsigned int *pValue);
-	int (*write)(struct tas2557_priv * pTAS2557, unsigned int reg,
+	int (*write)(struct tas2557_priv *pTAS2557,
+		unsigned int reg,
 		unsigned int Value);
-	int (*bulk_read)(struct tas2557_priv * pTAS2557, unsigned int reg,
-		unsigned char *pData, unsigned int len);
-	int (*bulk_write)(struct tas2557_priv * pTAS2557, unsigned int reg,
-		unsigned char *pData, unsigned int len);
-	int (*update_bits)(struct tas2557_priv * pTAS2557, unsigned int reg,
-		unsigned int mask, unsigned int value);
-	int (*set_config)(struct tas2557_priv *pTAS2557, int config);
-	int (*set_calibration)(struct tas2557_priv *pTAS2557, int calibration);
-#ifdef CONFIG_TAS2557_CODEC
-	struct mutex codec_lock;
-#endif
+	int (*bulk_read)(struct tas2557_priv *pTAS2557,
+		unsigned int reg,
+		unsigned char *pData,
+		unsigned int len);
+	int (*bulk_write)(struct tas2557_priv *pTAS2557,
+		unsigned int reg,
+		unsigned char *pData,
+		unsigned int len);
+	int (*update_bits)(struct tas2557_priv *pTAS2557,
+		unsigned int reg,
+		unsigned int mask,
+		unsigned int value);
+	int (*set_config)(struct tas2557_priv *pTAS2557,
+		int config);
+	int (*set_calibration)(struct tas2557_priv *pTAS2557,
+		int calibration);
+	int (*enableIRQ)(struct tas2557_priv *pTAS2557, bool enable, bool clear);
+	void (*hw_reset)(struct tas2557_priv *pTAS2557);
+
+	int mnGpioINT;
+	struct delayed_work irq_work;
+	unsigned int mnIRQ;
+	bool mbIRQEnable;
+	unsigned char mnI2SBits;
+
+	/* for low temperature check */
+	unsigned int mnDevGain;
+	unsigned int mnDevCurrentGain;
+	struct hrtimer mtimer;
+	struct work_struct mtimerwork;
+
 #ifdef CONFIG_TAS2557_MISC
 	int mnDBGCmd;
 	int mnCurrentReg;
 	struct mutex file_lock;
 #endif
+
 };
 
 #endif /* _TAS2557_H */
