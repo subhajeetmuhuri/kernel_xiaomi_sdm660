@@ -386,6 +386,7 @@ struct tas2557_priv {
 	struct TFirmware *mpCalFirmware;
 	unsigned int mnCurrentProgram;
 	unsigned int mnCurrentSampleRate;
+	unsigned int mnNewConfiguration;
 	unsigned int mnCurrentConfiguration;
 	unsigned int mnCurrentCalibration;
 	unsigned char mnCurrentBook;
@@ -393,7 +394,7 @@ struct tas2557_priv {
 	int mnDevChl;
 	bool mbTILoadActive;
 	bool mbPowerUp;
-	bool mbLoadConfigurationPostPowerUp;
+	bool mbLoadConfigurationPrePowerUp;
 	bool mbLoadCalibrationPostPowerUp;
 	unsigned int mnPowerCtrl;
 	bool mbCalibrationLoaded;
@@ -419,7 +420,8 @@ struct tas2557_priv {
 		int config);
 	int (*set_calibration)(struct tas2557_priv *pTAS2557,
 		int calibration);
-	int (*enableIRQ)(struct tas2557_priv *pTAS2557, bool enable, bool clear);
+	void (*clearIRQ)(struct tas2557_priv *pTAS2557);
+	void (*enableIRQ)(struct tas2557_priv *pTAS2557, bool enable);
 	void (*hw_reset)(struct tas2557_priv *pTAS2557);
 
 	int mnGpioINT;
@@ -431,8 +433,13 @@ struct tas2557_priv {
 	/* for low temperature check */
 	unsigned int mnDevGain;
 	unsigned int mnDevCurrentGain;
+	unsigned int mnDieTvReadCounter;
 	struct hrtimer mtimer;
 	struct work_struct mtimerwork;
+
+#ifdef CONFIG_TAS2557_CODEC
+	struct mutex codec_lock;
+#endif
 
 #ifdef CONFIG_TAS2557_MISC
 	int mnDBGCmd;

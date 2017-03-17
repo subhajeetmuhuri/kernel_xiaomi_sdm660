@@ -55,6 +55,7 @@
 #endif
 
 #define LOW_TEMPERATURE_GAIN 6
+#define LOW_TEMPERATURE_COUNTER 12
 
 static int tas2557_change_book_page(
 	struct tas2557_priv *pTAS2557,
@@ -305,18 +306,21 @@ end:
 	return nResult;
 }
 
-int tas2557_enableIRQ(struct tas2557_priv *pTAS2557, bool enable, bool clear)
+void tas2557_clearIRQ(struct tas2557_priv *pTAS2557)
 {
 	unsigned int nValue;
 	int nResult = 0;
 
-	if (enable) {
-		if (clear) {
-			nResult = pTAS2557->read(pTAS2557, TAS2557_FLAGS_1, &nValue);
-			if (nResult >= 0)
-				nResult = pTAS2557->read(pTAS2557, TAS2557_FLAGS_2, &nValue);
-		}
+	nResult = pTAS2557->read(pTAS2557, TAS2557_FLAGS_1, &nValue);
+	if (nResult >= 0)
+		pTAS2557->read(pTAS2557, TAS2557_FLAGS_2, &nValue);
 
+}
+
+
+void tas2557_enableIRQ(struct tas2557_priv *pTAS2557, bool enable)
+{
+	if (enable) {
 		if (!pTAS2557->mbIRQEnable) {
 			if (pTAS2557->mnIRQ != 0)
 				enable_irq(pTAS2557->mnIRQ);
@@ -328,28 +332,18 @@ int tas2557_enableIRQ(struct tas2557_priv *pTAS2557, bool enable, bool clear)
 				disable_irq_nosync(pTAS2557->mnIRQ);
 			pTAS2557->mbIRQEnable = false;
 		}
-
-		if (clear) {
-			nResult = pTAS2557->read(pTAS2557, TAS2557_FLAGS_1, &nValue);
-			if (nResult >= 0)
-				nResult = pTAS2557->read(pTAS2557, TAS2557_FLAGS_2, &nValue);
-		}
 	}
-
-	return nResult;
 }
 
 static void tas2557_hw_reset(struct tas2557_priv *pTAS2557)
 {
-#ifdef ENABLE_GPIO_RESET
 	if (gpio_is_valid(pTAS2557->mnResetGPIO)) {
-		devm_gpio_request_one(pTAS2557->dev, pTAS2557->mnResetGPIO,
-			GPIOF_OUT_INIT_LOW, "TAS2557_RST");
-		msleep(10);
-		gpio_set_value_cansleep(pTAS2557->mnResetGPIO, 1);
-		udelay(1000);
+		gpio_direction_output(pTAS2557->mnResetGPIO, 0);
+		msleep(5);
+		gpio_direction_output(pTAS2557->mnResetGPIO, 1);
+		msleep(2);
 	}
-#endif
+
 	pTAS2557->mnCurrentBook = -1;
 	pTAS2557->mnCurrentPage = -1;
 }
@@ -362,8 +356,16 @@ static void irq_work_routine(struct work_struct *work)
 	struct tas2557_priv *pTAS2557 =
 		container_of(work, struct tas2557_priv, irq_work.work);
 
+#ifdef CONFIG_TAS2557_CODEC
+	mutex_lock(&pTAS2557->codec_lock);
+#endif
+
+#ifdef CONFIG_TAS2557_MISC
+	mutex_lock(&pTAS2557->file_lock);
+#endif
+
 	if (!pTAS2557->mbPowerUp)
-		return;
+		goto end;
 
 	nResult = tas2557_dev_read(pTAS2557, TAS2557_FLAGS_1, &nDevInt1Status);
 	if (nResult >= 0)
@@ -391,20 +393,29 @@ static void irq_work_routine(struct work_struct *work)
 
 		dev_dbg(pTAS2557->dev, "%s: INT1=0x%x, INT2=0x%x; PowerUpFlag=0x%x, PwrStatus=0x%x\n",
 			__func__, nDevInt1Status, nDevInt2Status, nDevPowerUpFlag, nDevPowerStatus);
+		goto end;
 	}
-	return;
 
 program:
 	/* hardware reset and reload */
-	tas2557_hw_reset(pTAS2557);
 	tas2557_set_program(pTAS2557, pTAS2557->mnCurrentProgram, pTAS2557->mnCurrentConfiguration);
+
+end:
+
+#ifdef CONFIG_TAS2557_MISC
+	mutex_unlock(&pTAS2557->file_lock);
+#endif
+
+#ifdef CONFIG_TAS2557_CODEC
+	mutex_unlock(&pTAS2557->codec_lock);
+#endif
 }
 
 static irqreturn_t tas2557_irq_handler(int irq, void *dev_id)
 {
 	struct tas2557_priv *pTAS2557 = (struct tas2557_priv *)dev_id;
 
-	tas2557_enableIRQ(pTAS2557, false, false);
+	tas2557_enableIRQ(pTAS2557, false);
 	/* get IRQ status after 100 ms */
 	schedule_delayed_work(&pTAS2557->irq_work, msecs_to_jiffies(100));
 	return IRQ_HANDLED;
@@ -422,32 +433,62 @@ static enum hrtimer_restart temperature_timer_func(struct hrtimer *timer)
 static void timer_work_routine(struct work_struct *work)
 {
 	struct tas2557_priv *pTAS2557 = container_of(work, struct tas2557_priv, mtimerwork);
-	int nResult, nTemp;
+	int nResult, nTemp, nActTemp;
+	struct TProgram *pProgram;
+	static int nAvg;
 
-	if (!pTAS2557->mbPowerUp)
+#ifdef CONFIG_TAS2557_CODEC
+	mutex_lock(&pTAS2557->codec_lock);
+#endif
+
+#ifdef CONFIG_TAS2557_MISC
+	mutex_lock(&pTAS2557->file_lock);
+#endif
+
+	if (!pTAS2557->mpFirmware->mnConfigurations) {
+		dev_info(pTAS2557->dev, "%s, firmware not loaded\n", __func__);
 		goto end;
+	}
+
+	pProgram = &(pTAS2557->mpFirmware->mpPrograms[pTAS2557->mnCurrentProgram]);
+	if (!pTAS2557->mbPowerUp
+		|| (pProgram->mnAppMode != TAS2557_APP_TUNINGMODE)) {
+		dev_info(pTAS2557->dev, "%s, pass, Pow=%d, program=%s\n",
+			__func__, pTAS2557->mbPowerUp, pProgram->mpName);
+		goto end;
+	}
 
 	nResult = tas2557_get_die_temperature(pTAS2557, &nTemp);
 	if (nResult >= 0) {
-		dev_dbg(pTAS2557->dev, "Die=0x%x, degree=%d\n", nTemp, (nTemp>>23));
-		if ((nTemp & 0x80000000) != 0) {
-			/* if Die temperature is below ZERO */
-			if (pTAS2557->mnDevCurrentGain != LOW_TEMPERATURE_GAIN) {
-				nResult = tas2557_set_DAC_gain(pTAS2557, LOW_TEMPERATURE_GAIN);
-				if (nResult < 0)
-					goto end;
-				pTAS2557->mnDevCurrentGain = LOW_TEMPERATURE_GAIN;
-				dev_dbg(pTAS2557->dev, "LOW Temp: set gain to %d\n", LOW_TEMPERATURE_GAIN);
+		nActTemp = (int)(nTemp >> 23);
+		dev_dbg(pTAS2557->dev, "Die=0x%x, degree=%d\n", nTemp, nActTemp);
+		if (!pTAS2557->mnDieTvReadCounter)
+			nAvg = 0;
+		pTAS2557->mnDieTvReadCounter++;
+		nAvg += nActTemp;
+		if (!(pTAS2557->mnDieTvReadCounter % LOW_TEMPERATURE_COUNTER)) {
+			nAvg /= LOW_TEMPERATURE_COUNTER;
+			dev_dbg(pTAS2557->dev, "check : avg=%d\n", nAvg);
+			if ((nAvg & 0x80000000) != 0) {
+				/* if Die temperature is below ZERO */
+				if (pTAS2557->mnDevCurrentGain != LOW_TEMPERATURE_GAIN) {
+					nResult = tas2557_set_DAC_gain(pTAS2557, LOW_TEMPERATURE_GAIN);
+					if (nResult < 0)
+						goto end;
+					pTAS2557->mnDevCurrentGain = LOW_TEMPERATURE_GAIN;
+					dev_dbg(pTAS2557->dev, "LOW Temp: set gain to %d\n", LOW_TEMPERATURE_GAIN);
+				}
+			} else if (nAvg > 5) {
+				/* if Die temperature is above 5 degree C */
+				if (pTAS2557->mnDevCurrentGain != pTAS2557->mnDevGain) {
+					nResult = tas2557_set_DAC_gain(pTAS2557, pTAS2557->mnDevGain);
+					if (nResult < 0)
+						goto end;
+					pTAS2557->mnDevCurrentGain = pTAS2557->mnDevGain;
+					dev_dbg(pTAS2557->dev, "LOW Temp: set gain to original\n");
+				}
 			}
-		} else {
-			/* if Die temperature is above ZERO */
-			if (pTAS2557->mnDevCurrentGain != pTAS2557->mnDevGain) {
-				nResult = tas2557_set_DAC_gain(pTAS2557, pTAS2557->mnDevGain);
-				if (nResult < 0)
-					goto end;
-				pTAS2557->mnDevCurrentGain = pTAS2557->mnDevGain;
-				dev_dbg(pTAS2557->dev, "LOW Temp: set gain to original\n");
-			}
+			nAvg = 0;
 		}
 
 		if (pTAS2557->mbPowerUp)
@@ -456,7 +497,14 @@ static void timer_work_routine(struct work_struct *work)
 	}
 
 end:
-	return;
+
+#ifdef CONFIG_TAS2557_MISC
+	mutex_unlock(&pTAS2557->file_lock);
+#endif
+
+#ifdef CONFIG_TAS2557_CODEC
+	mutex_unlock(&pTAS2557->codec_lock);
+#endif
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -493,6 +541,7 @@ static int tas2557_resume(struct device *dev)
 	if (pTAS2557->mbPowerUp && (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE)) {
 		if (!hrtimer_active(&pTAS2557->mtimer)) {
 			dev_dbg(pTAS2557->dev, "%s, start Die Temp check timer\n", __func__);
+			pTAS2557->mnDieTvReadCounter = 0;
 			hrtimer_start(&pTAS2557->mtimer,
 				ns_to_ktime((u64)LOW_TEMPERATURE_CHECK_PERIOD * NSEC_PER_MSEC), HRTIMER_MODE_REL);
 		}
@@ -500,7 +549,7 @@ static int tas2557_resume(struct device *dev)
 
 end:
 
-	return 0; 
+	return 0;
 }
 #endif
 
@@ -558,7 +607,15 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	if (pClient->dev.of_node)
 		tas2557_parse_dt(&pClient->dev, pTAS2557);
 
-	tas2557_hw_reset(pTAS2557);
+	if (gpio_is_valid(pTAS2557->mnResetGPIO)) {
+		nResult = gpio_request(pTAS2557->mnResetGPIO, "TAS2557-RESET");
+		if (nResult < 0) {
+			dev_err(pTAS2557->dev, "%s: GPIO %d request error\n",
+				__func__, pTAS2557->mnResetGPIO);
+			goto err;
+		}
+		tas2557_hw_reset(pTAS2557);
+	}
 
 	pTAS2557->read = tas2557_dev_read;
 	pTAS2557->write = tas2557_dev_write;
@@ -566,6 +623,7 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	pTAS2557->bulk_write = tas2557_dev_bulk_write;
 	pTAS2557->update_bits = tas2557_dev_update_bits;
 	pTAS2557->enableIRQ = tas2557_enableIRQ;
+	pTAS2557->clearIRQ = tas2557_clearIRQ;
 	pTAS2557->set_config = tas2557_set_config;
 	pTAS2557->set_calibration = tas2557_set_calibration;
 	pTAS2557->hw_reset = tas2557_hw_reset;
@@ -631,6 +689,7 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	}
 
 #ifdef CONFIG_TAS2557_CODEC
+	mutex_init(&pTAS2557->codec_lock);
 	tas2557_register_codec(pTAS2557);
 #endif
 
@@ -648,7 +707,7 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	INIT_WORK(&pTAS2557->mtimerwork, timer_work_routine);
 
 	nResult = request_firmware_nowait(THIS_MODULE, 1, pFWName,
-				pTAS2557->dev, GFP_KERNEL, pTAS2557, tas2557_fw_ready);
+		pTAS2557->dev, GFP_KERNEL, pTAS2557, tas2557_fw_ready);
 
 err:
 
@@ -663,6 +722,7 @@ static int tas2557_i2c_remove(struct i2c_client *pClient)
 
 #ifdef CONFIG_TAS2557_CODEC
 	tas2557_deregister_codec(pTAS2557);
+	mutex_destroy(&pTAS2557->codec_lock);
 #endif
 
 #ifdef CONFIG_TAS2557_MISC
@@ -717,4 +777,5 @@ module_i2c_driver(tas2557_i2c_driver);
 MODULE_AUTHOR("Texas Instruments Inc.");
 MODULE_DESCRIPTION("TAS2557 I2C Smart Amplifier driver");
 MODULE_LICENSE("GPL v2");
+
 #endif

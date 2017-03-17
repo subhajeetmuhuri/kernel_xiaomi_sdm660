@@ -282,6 +282,72 @@ static long tiload_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	return num;
 }
 
+#ifdef CONFIG_COMPAT
+static long tiload_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	struct tas2557_priv *pTAS2557 = (struct tas2557_priv *)filp->private_data;
+	long nResult = 0;
+
+	switch (cmd) {
+	case TILOAD_COMPAT_IOMAGICNUM_GET:
+		dev_info(pTAS2557->dev, "%s, TILOAD_COMPAT_IOMAGICNUM_GET=0x%x\n",
+			__func__, cmd);
+		nResult = tiload_ioctl(filp, TILOAD_IOMAGICNUM_GET,
+			(unsigned long) compat_ptr(arg));
+		break;
+
+	case TILOAD_COMPAT_IOMAGICNUM_SET:
+		dev_info(pTAS2557->dev, "%s, TILOAD_COMPAT_IOMAGICNUM_SET=0x%x\n",
+			__func__, cmd);
+		nResult = tiload_ioctl(filp, TILOAD_IOMAGICNUM_SET,
+			(unsigned long) compat_ptr(arg));
+		break;
+
+	case TILOAD_COMPAT_BPR_READ:
+		dev_info(pTAS2557->dev, "%s, TILOAD_COMPAT_BPR_READ=0x%x\n",
+			__func__, cmd);
+		nResult = tiload_ioctl(filp, TILOAD_BPR_READ,
+			(unsigned long) compat_ptr(arg));
+		break;
+
+	case TILOAD_COMPAT_BPR_WRITE:
+		dev_info(pTAS2557->dev, "%s, TILOAD_COMPAT_BPR_WRITE=0x%x\n",
+			__func__, cmd);
+		nResult = tiload_ioctl(filp, TILOAD_BPR_WRITE,
+			(unsigned long) compat_ptr(arg));
+		break;
+
+	case TILOAD_COMPAT_IOCTL_SET_CHL:
+		dev_info(pTAS2557->dev, "%s, TILOAD_COMPAT_IOCTL_SET_CHL=0x%x\n",
+			__func__, cmd);
+		nResult = tiload_ioctl(filp, TILOAD_IOCTL_SET_CHL,
+			(unsigned long) compat_ptr(arg));
+		break;
+
+	case TILOAD_COMPAT_IOCTL_SET_CONFIG:
+		dev_info(pTAS2557->dev, "%s, TILOAD_COMPAT_IOCTL_SET_CONFIG=0x%x\n",
+			__func__, cmd);
+		nResult = tiload_ioctl(filp, TILOAD_IOCTL_SET_CONFIG,
+			(unsigned long) compat_ptr(arg));
+		break;
+
+	case TILOAD_COMPAT_IOCTL_SET_CALIBRATION:
+		dev_info(pTAS2557->dev, "%s, TILOAD_COMPAT_IOCTL_SET_CALIBRATION=0x%x\n",
+			__func__, cmd);
+		nResult = tiload_ioctl(filp, TILOAD_IOCTL_SET_CALIBRATION,
+			(unsigned long) compat_ptr(arg));
+		break;
+
+	default:
+		dev_err(pTAS2557->dev, "%s, unsupport compat ioctl=0x%x\n",
+			__func__, cmd);
+		break;
+	}
+
+	return nResult;
+}
+#endif
+
 /*********** File operations structure for tiload *************/
 static const struct file_operations tiload_fops = {
 	.owner = THIS_MODULE,
@@ -290,6 +356,9 @@ static const struct file_operations tiload_fops = {
 	.read = tiload_read,
 	.write = tiload_write,
 	.unlocked_ioctl = tiload_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = tiload_compat_ioctl,
+#endif
 };
 
 /*----------------------------------------------------------------------------
