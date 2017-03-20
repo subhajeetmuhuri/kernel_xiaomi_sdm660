@@ -37,7 +37,7 @@
 
 #define TAS2557_YRAM3_PAGE				50
 #define TAS2557_YRAM3_START_REG			8
-#define TAS2557_YRAM3_END_REG			23
+#define TAS2557_YRAM3_END_REG			27
 
 /* should not include B0_P53_R44-R47 */
 #define TAS2557_YRAM_BOOK2				0
