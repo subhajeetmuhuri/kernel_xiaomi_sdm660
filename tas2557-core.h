@@ -59,6 +59,7 @@ struct TYCRC {
 };
 
 int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable);
+int tas2557_SA_DevChnSetup(struct tas2557_priv *pTAS2557, unsigned int mode);
 int tas2557_get_die_temperature(struct tas2557_priv *pTAS2557, int *pTemperature);
 int tas2557_set_sampling_rate(struct tas2557_priv *pTAS2557, unsigned int nSamplingRate);
 int tas2557_set_bit_rate(struct tas2557_priv *pTAS2557, unsigned int nBitRate);
