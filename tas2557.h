@@ -413,12 +413,10 @@ struct tas2557_priv {
 	unsigned int mnCurrentCalibration;
 	unsigned char mnCurrentBook;
 	unsigned char mnCurrentPage;
-	int mnDevChl;
 	bool mbTILoadActive;
 	bool mbPowerUp;
 	bool mbLoadConfigurationPrePowerUp;
 	bool mbLoadCalibrationPostPowerUp;
-	unsigned int mnPowerCtrl;
 	bool mbCalibrationLoaded;
 	int (*read)(struct tas2557_priv *pTAS2557,
 		unsigned int reg,

@@ -386,11 +386,11 @@ static int tas2557_load_coefficient(struct tas2557_priv *pTAS2557,
 {
 	int nResult = 0;
 	struct TPLL *pPLL;
-	bool bRestorePower = false;
 	struct TProgram *pProgram;
 	struct TConfiguration *pPrevConfiguration;
 	struct TConfiguration *pNewConfiguration;
 	struct TCalibration *pCalibration = NULL;
+	bool bRestorePower = false;
 
 	if (!pTAS2557->mpFirmware->mnConfigurations) {
 		dev_err(pTAS2557->dev, "%s, firmware not loaded\n", __func__);
@@ -896,7 +896,8 @@ static int fw_parse_configuration_data(struct tas2557_priv *pTAS2557,
 		if (pFirmware->mnDriverVersion >= PPC_DRIVER_CONFDEV) {
 			pConfiguration->mnDevices = (pData[0] << 8) + pData[1];
 			pData += 2;
-		}
+		} else
+			pConfiguration->mnDevices = 0;
 
 		pConfiguration->mnProgram = pData[0];
 		pData++;

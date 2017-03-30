@@ -373,7 +373,7 @@ static void irq_work_routine(struct work_struct *work)
 {
 	int nResult = 0;
 	unsigned int nDevInt1Status = 0, nDevInt2Status = 0;
-	unsigned int nDevPowerUpFlag = 0, nDevPowerStatus = 0;
+	unsigned int nDevPowerUpFlag = 0;
 	struct tas2557_priv *pTAS2557 =
 		container_of(work, struct tas2557_priv, irq_work.work);
 
@@ -457,20 +457,20 @@ static void irq_work_routine(struct work_struct *work)
 		nResult = tas2557_dev_read(pTAS2557, TAS2557_POWER_UP_FLAG_REG, &nDevPowerUpFlag);
 		if (nResult < 0)
 			goto program;
-		if ((nDevPowerUpFlag & 0x40) == 0) {
-			/* Class-D doesn't power on */
-			nResult = tas2557_dev_read(pTAS2557, TAS2557_POWER_CTRL2_REG, &nDevPowerStatus);
-			if (nResult < 0)
-				goto program;
-			if (nDevPowerStatus & 0x80)
-					pTAS2557->mnErrCode |= ERROR_CLASSD_PWR;
-				goto program; /* failed to power on the Class-D */
+		if ((nDevPowerUpFlag & 0xc0) != 0xc0) {
+			dev_err(pTAS2557->dev, "%s, Critical DevA ERROR B[%d]_P[%d]_R[%d]= 0x%x\n",
+				__func__,
+				TAS2557_BOOK_ID(TAS2557_POWER_UP_FLAG_REG),
+				TAS2557_PAGE_ID(TAS2557_POWER_UP_FLAG_REG),
+				TAS2557_PAGE_REG(TAS2557_POWER_UP_FLAG_REG),
+				nDevPowerUpFlag);
+			pTAS2557->mnErrCode |= ERROR_CLASSD_PWR;
+			goto program;
 		}
-
 		pTAS2557->mnErrCode &= ~ERROR_CLASSD_PWR;
 
-		dev_dbg(pTAS2557->dev, "%s: INT1=0x%x, INT2=0x%x; PowerUpFlag=0x%x, PwrStatus=0x%x\n",
-			__func__, nDevInt1Status, nDevInt2Status, nDevPowerUpFlag, nDevPowerStatus);
+		dev_dbg(pTAS2557->dev, "%s: INT1=0x%x, INT2=0x%x; PowerUpFlag=0x%x\n",
+			__func__, nDevInt1Status, nDevInt2Status, nDevPowerUpFlag);
 		goto end;
 	}
 
@@ -494,8 +494,8 @@ static irqreturn_t tas2557_irq_handler(int irq, void *dev_id)
 	struct tas2557_priv *pTAS2557 = (struct tas2557_priv *)dev_id;
 
 	tas2557_enableIRQ(pTAS2557, false);
-	/* get IRQ status after 50 ms */
-	schedule_delayed_work(&pTAS2557->irq_work, msecs_to_jiffies(50));
+	/* get IRQ status after 100 ms */
+	schedule_delayed_work(&pTAS2557->irq_work, msecs_to_jiffies(100));
 	return IRQ_HANDLED;
 }
 
@@ -503,8 +503,10 @@ static enum hrtimer_restart temperature_timer_func(struct hrtimer *timer)
 {
 	struct tas2557_priv *pTAS2557 = container_of(timer, struct tas2557_priv, mtimer);
 
-	if (pTAS2557->mbPowerUp)
+	if (pTAS2557->mbPowerUp) {
 		schedule_work(&pTAS2557->mtimerwork);
+		schedule_delayed_work(&pTAS2557->irq_work, msecs_to_jiffies(1));
+	}
 	return HRTIMER_NORESTART;
 }
 
