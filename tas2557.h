@@ -79,7 +79,7 @@
 #define TAS2557_DSP_MODE_SELECT_REG		TAS2557_REG(0, 0, 34)
 #define TAS2557_SAFE_GUARD_REG			TAS2557_REG(0, 0, 37)
 #define TAS2557_ASI_CTL1_REG			TAS2557_REG(0, 0, 42)
-#define TAS2557_CLK_ERR_CTRL			TAS2557_REG(0, 0, 44)
+#define TAS2557_CLK_ERR_CTRL			TAS2557_REG(0, 0, 44)	/* B0_P0_R0x2c*/
 #define TAS2557_CLK_ERR_CTRL2			TAS2557_REG(0, 0, 45)	/* B0_P0_R0x2d*/
 #define TAS2557_CLK_ERR_CTRL3			TAS2557_REG(0, 0, 46)	/* B0_P0_R0x2e*/
 #define TAS2557_DBOOST_CFG_REG			TAS2557_REG(0, 0, 52)
@@ -176,6 +176,8 @@
 #define TAS2557_TEST_MODE_REG			TAS2557_REG(0, 253, 13)
 #define TAS2557_BROADCAST_REG			TAS2557_REG(0, 253, 54)
 #define TAS2557_CRYPTIC_REG			TAS2557_REG(0, 253, 71)
+#define TAS2557_PG2P1_CALI_R0_REG		TAS2557_REG(0x8c, 0x2f, 0x40)
+#define TAS2557_PG1P0_CALI_R0_REG		TAS2557_REG(0x8c, 0x2f, 0x28)
 
 #define TAS2557_DAC_INTERPOL_REG		TAS2557_REG(100, 0, 1)
 #define TAS2557_SOFT_MUTE_REG			TAS2557_REG(100, 0, 7)
@@ -299,12 +301,6 @@
 #define	TAS2557_BOOST_DEVB		2
 #define	TAS2557_BOOST_BOTH		3
 
-#define	TAS2557_DEVA_CHL_DEFAULT	0	/* DevA default */
-#define	TAS2557_DEVA_CHL_MUTE		1	/* DevA mute */
-#define	TAS2557_DEVA_CHL_LEFT		2	/* DevA left channel */
-#define	TAS2557_DEVA_CHL_RIGHT		3	/* DevA right channel */
-#define	TAS2557_DEVA_CHL_MONOMIX	4	/* DevA (L+R)/2 */
-
 #define	ERROR_NONE			0x00000000
 #define	ERROR_PLL_ABSENT	0x00000001
 #define	ERROR_DEVA_I2C_COMM	0x00000002
@@ -400,7 +396,6 @@ struct tas2557_register {
 struct tas2557_priv {
 	struct device *dev;
 	struct regmap *mpRegmap;
-	int mnLoad;
 	int mnPGID;
 	int mnResetGPIO;
 	struct mutex dev_lock;
@@ -450,8 +445,6 @@ struct tas2557_priv {
 	bool mbIRQEnable;
 	unsigned char mnI2SBits;
 
-	unsigned int mnChannelState;
-	unsigned char mnDevAChlData[16];
 
 	/* for low temperature check */
 	unsigned int mnDevGain;

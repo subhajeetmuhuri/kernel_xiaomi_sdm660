@@ -294,6 +294,27 @@ static int tas2557_fs_put(struct snd_kcontrol *pKcontrol,
 	return ret;
 }
 
+static int tas2557_Cali_get(struct snd_kcontrol *pKcontrol,
+	struct snd_ctl_elem_value *pValue)
+{
+#ifdef KCONTROL_CODEC
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
+#else
+	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
+#endif
+	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
+	int prm_r0 = 0;
+
+	mutex_lock(&pTAS2557->codec_lock);
+
+	ret = tas2557_get_Cali_prm_r0(pTAS2557, &prm_r0);
+	pValue->value.integer.value[0] = prm_r0;
+	dev_dbg(pTAS2557->dev, "%s = 0x%x\n", __func__, prm_r0);
+
+	mutex_unlock(&pTAS2557->codec_lock);
+	return ret;
+}
 static int tas2557_program_get(struct snd_kcontrol *pKcontrol,
 	struct snd_ctl_elem_value *pValue)
 {
@@ -324,11 +345,13 @@ static int tas2557_program_put(struct snd_kcontrol *pKcontrol,
 #endif
 	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
 	unsigned int nProgram = pValue->value.integer.value[0];
-	int ret = 0;
+	int ret = 0, nConfiguration = -1;
 
 	mutex_lock(&pTAS2557->codec_lock);
 
-	ret = tas2557_set_program(pTAS2557, nProgram, -1);
+	if (nProgram == pTAS2557->mnCurrentProgram)
+		nConfiguration = pTAS2557->mnCurrentConfiguration;
+	ret = tas2557_set_program(pTAS2557, nProgram, nConfiguration);
 
 	mutex_unlock(&pTAS2557->codec_lock);
 	return ret;
@@ -416,68 +439,7 @@ static int tas2557_calibration_put(struct snd_kcontrol *pKcontrol,
 	return ret;
 }
 
-
-/*
- * DAC digital volumes. From 0 to 15 dB in 1 dB steps
- */
-static DECLARE_TLV_DB_SCALE(dac_tlv, 0, 100, 0);
-
-
-
-	
-
-static const char * const chl_setup_text[] = {
-	"default",
-	"DevA-Mute",
-	"DevA-Left",
-	"DevA-Right",
-	"DevA-MonoMix"
-};
-static const struct soc_enum chl_setup_enum[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(chl_setup_text), chl_setup_text),
-};
-
-static int tas2557_dsp_chl_setup_get(struct snd_kcontrol *pKcontrol,
-			struct snd_ctl_elem_value *pValue)
-{
-#ifdef KCONTROL_CODEC
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
-	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
-
-	mutex_lock(&pTAS2557->codec_lock);
-
-	pValue->value.integer.value[0] = pTAS2557->mnChannelState;
-
-	mutex_unlock(&pTAS2557->codec_lock);
-
-	return 0;
-}
-
-static int tas2557_dsp_chl_setup_put(struct snd_kcontrol *pKcontrol,
-			struct snd_ctl_elem_value *pValue)
-{
-#ifdef KCONTROL_CODEC
-	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(pKcontrol);
-#else
-	struct snd_soc_codec *codec = snd_kcontrol_chip(pKcontrol);
-#endif
-	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(codec);
-	int channel_state = pValue->value.integer.value[0];
-
-	mutex_lock(&pTAS2557->codec_lock);
-
-	tas2557_SA_DevChnSetup(pTAS2557, channel_state);
-
-	mutex_unlock(&pTAS2557->codec_lock);
-	return 0;
-}
-
 static const struct snd_kcontrol_new tas2557_snd_controls[] = {
-	SOC_SINGLE_TLV("DAC Playback Volume", TAS2557_SPK_CTRL_REG, 3, 0x0f, 0,
-		dac_tlv),
 	SOC_SINGLE_EXT("PowerCtrl", SND_SOC_NOPM, 0, 0x0001, 0,
 		tas2557_power_ctrl_get, tas2557_power_ctrl_put),
 	SOC_SINGLE_EXT("Program", SND_SOC_NOPM, 0, 0x00FF, 0, tas2557_program_get,
@@ -486,10 +448,10 @@ static const struct snd_kcontrol_new tas2557_snd_controls[] = {
 		tas2557_configuration_get, tas2557_configuration_put),
 	SOC_SINGLE_EXT("FS", SND_SOC_NOPM, 8000, 48000, 0,
 		tas2557_fs_get, tas2557_fs_put),
+	SOC_SINGLE_EXT("Get Cali_Re", SND_SOC_NOPM, 0, 0x7f000000, 0,
+		tas2557_Cali_get, NULL),
 	SOC_SINGLE_EXT("Calibration", SND_SOC_NOPM, 0, 0x00FF, 0,
 		tas2557_calibration_get, tas2557_calibration_put),
-	SOC_ENUM_EXT("DSPChl Setup", chl_setup_enum[0],
-		tas2557_dsp_chl_setup_get, tas2557_dsp_chl_setup_put),
 };
 
 static struct snd_soc_codec_driver soc_codec_driver_tas2557 = {

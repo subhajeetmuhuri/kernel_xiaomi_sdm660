@@ -340,13 +340,16 @@ void tas2557_enableIRQ(struct tas2557_priv *pTAS2557, bool enable)
 {
 	if (enable) {
 		if (!pTAS2557->mbIRQEnable) {
-			if (pTAS2557->mnIRQ != 0)
+			if (gpio_is_valid(pTAS2557->mnGpioINT)) {
 				enable_irq(pTAS2557->mnIRQ);
-			pTAS2557->mbIRQEnable = true;
+				/* check after 10 ms */
+				schedule_delayed_work(&pTAS2557->irq_work, msecs_to_jiffies(10));
+				pTAS2557->mbIRQEnable = true;
+			}
 		}
 	} else {
 		if (pTAS2557->mbIRQEnable) {
-			if (pTAS2557->mnIRQ != 0)
+			if (gpio_is_valid(pTAS2557->mnGpioINT))
 				disable_irq_nosync(pTAS2557->mnIRQ);
 			pTAS2557->mbIRQEnable = false;
 		}
@@ -458,7 +461,7 @@ static void irq_work_routine(struct work_struct *work)
 		if (nResult < 0)
 			goto program;
 		if ((nDevPowerUpFlag & 0xc0) != 0xc0) {
-			dev_err(pTAS2557->dev, "%s, Critical DevA ERROR B[%d]_P[%d]_R[%d]= 0x%x\n",
+			dev_err(pTAS2557->dev, "%s, Critical ERROR B[%d]_P[%d]_R[%d]= 0x%x\n",
 				__func__,
 				TAS2557_BOOK_ID(TAS2557_POWER_UP_FLAG_REG),
 				TAS2557_PAGE_ID(TAS2557_POWER_UP_FLAG_REG),

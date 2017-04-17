@@ -66,6 +66,7 @@ int tas2557_set_bit_rate(struct tas2557_priv *pTAS2557, unsigned int nBitRate);
 int tas2557_get_bit_rate(struct tas2557_priv *pTAS2557, unsigned char *pBitRate);
 int tas2557_set_config(struct tas2557_priv *pTAS2557, int config);
 void tas2557_fw_ready(const struct firmware *pFW, void *pContext);
+int tas2557_get_Cali_prm_r0(struct tas2557_priv *pTAS2557, int *prm_r0);
 int tas2557_set_program(struct tas2557_priv *pTAS2557, unsigned int nProgram, int nConfig);
 int tas2557_set_calibration(struct tas2557_priv *pTAS2557, int nCalibration);
 int tas2557_load_default(struct tas2557_priv *pTAS2557);
