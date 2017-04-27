@@ -1872,12 +1872,14 @@ int tas2557_get_Cali_prm_r0(struct tas2557_priv *pTAS2557, int *prm_r0)
 						bFound = true;
 						goto end;
 					}
-					nn++;
+					nn += 2;
 					nn += ((len - 1) / 4);
 					if ((len - 1) % 4)
 						nn++;
-				} else
+				} else {
 					dev_err(pTAS2557->dev, "%s, format error %d\n", __func__, nOffset);
+					break;
+				}
 			}
 		}
 	}
