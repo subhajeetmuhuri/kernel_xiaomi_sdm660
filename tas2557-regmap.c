@@ -377,6 +377,7 @@ static void irq_work_routine(struct work_struct *work)
 	int nResult = 0;
 	unsigned int nDevInt1Status = 0, nDevInt2Status = 0;
 	unsigned int nDevPowerUpFlag = 0;
+	int nCounter = 2;
 	struct tas2557_priv *pTAS2557 =
 		container_of(work, struct tas2557_priv, irq_work.work);
 
@@ -407,59 +408,72 @@ static void irq_work_routine(struct work_struct *work)
 	if (((nDevInt1Status & 0xfc) != 0) || ((nDevInt2Status & 0x0c) != 0)) {
 		/* in case of INT_OC, INT_UV, INT_OT, INT_BO, INT_CL, INT_CLK1, INT_CLK2 */
 		dev_err(pTAS2557->dev, "critical error: 0x%x, 0x%x\n", nDevInt1Status, nDevInt2Status);
-			if (nDevInt1Status & 0x80) {
-				pTAS2557->mnErrCode |= ERROR_OVER_CURRENT;
-				dev_err(pTAS2557->dev, "DEVA SPK over current!\n");
-			} else
-				pTAS2557->mnErrCode &= ~ERROR_OVER_CURRENT;
+		if (nDevInt1Status & 0x80) {
+			pTAS2557->mnErrCode |= ERROR_OVER_CURRENT;
+			dev_err(pTAS2557->dev, "DEVA SPK over current!\n");
+		} else
+			pTAS2557->mnErrCode &= ~ERROR_OVER_CURRENT;
 
-			if (nDevInt1Status & 0x40) {
-				pTAS2557->mnErrCode |= ERROR_UNDER_VOLTAGE;
-				dev_err(pTAS2557->dev, "DEVA SPK under voltage!\n");
-			} else
-				pTAS2557->mnErrCode &= ~ERROR_UNDER_VOLTAGE;
+		if (nDevInt1Status & 0x40) {
+			pTAS2557->mnErrCode |= ERROR_UNDER_VOLTAGE;
+			dev_err(pTAS2557->dev, "DEVA SPK under voltage!\n");
+		} else
+			pTAS2557->mnErrCode &= ~ERROR_UNDER_VOLTAGE;
 
-			if (nDevInt1Status & 0x20) {
-				pTAS2557->mnErrCode |= ERROR_CLK_HALT;
-				dev_err(pTAS2557->dev, "DEVA clk halted!\n");
-			} else
-				pTAS2557->mnErrCode &= ~ERROR_CLK_HALT;
+		if (nDevInt1Status & 0x20) {
+			pTAS2557->mnErrCode |= ERROR_CLK_HALT;
+			dev_err(pTAS2557->dev, "DEVA clk halted!\n");
+		} else
+			pTAS2557->mnErrCode &= ~ERROR_CLK_HALT;
 
-			if (nDevInt1Status & 0x10) {
-				pTAS2557->mnErrCode |= ERROR_DIE_OVERTEMP;
-				dev_err(pTAS2557->dev, "DEVA die over temperature!\n");
-			} else
-				pTAS2557->mnErrCode &= ~ERROR_DIE_OVERTEMP;
+		if (nDevInt1Status & 0x10) {
+			pTAS2557->mnErrCode |= ERROR_DIE_OVERTEMP;
+			dev_err(pTAS2557->dev, "DEVA die over temperature!\n");
+		} else
+			pTAS2557->mnErrCode &= ~ERROR_DIE_OVERTEMP;
 
-			if (nDevInt1Status & 0x08) {
-				pTAS2557->mnErrCode |= ERROR_BROWNOUT;
-				dev_err(pTAS2557->dev, "DEVA brownout!\n");
-			} else
-				pTAS2557->mnErrCode &= ~ERROR_BROWNOUT;
+		if (nDevInt1Status & 0x08) {
+			pTAS2557->mnErrCode |= ERROR_BROWNOUT;
+			dev_err(pTAS2557->dev, "DEVA brownout!\n");
+		} else
+			pTAS2557->mnErrCode &= ~ERROR_BROWNOUT;
 
-			if (nDevInt1Status & 0x04) {
-				pTAS2557->mnErrCode |= ERROR_CLK_LOST;
-				dev_err(pTAS2557->dev, "DEVA clock lost!\n");
-			} else
-				pTAS2557->mnErrCode &= ~ERROR_CLK_LOST;
+		if (nDevInt1Status & 0x04) {
+			pTAS2557->mnErrCode |= ERROR_CLK_LOST;
+			dev_err(pTAS2557->dev, "DEVA clock lost!\n");
+		} else
+			pTAS2557->mnErrCode &= ~ERROR_CLK_LOST;
 
-			if (nDevInt2Status & 0x08) {
-				pTAS2557->mnErrCode |= ERROR_CLK_DET1;
-				dev_err(pTAS2557->dev, "DEVA clk detection 1!\n");
-			} else
-				pTAS2557->mnErrCode &= ~ERROR_CLK_DET1;
+		if (nDevInt2Status & 0x08) {
+			pTAS2557->mnErrCode |= ERROR_CLK_DET1;
+			dev_err(pTAS2557->dev, "DEVA clk detection 1!\n");
+		} else
+			pTAS2557->mnErrCode &= ~ERROR_CLK_DET1;
 
-			if (nDevInt2Status & 0x04) {
-				pTAS2557->mnErrCode |= ERROR_CLK_DET2;
-				dev_err(pTAS2557->dev, "DEVA clk detection 2!\n");
-			} else
-				pTAS2557->mnErrCode &= ~ERROR_CLK_DET2;
+		if (nDevInt2Status & 0x04) {
+			pTAS2557->mnErrCode |= ERROR_CLK_DET2;
+			dev_err(pTAS2557->dev, "DEVA clk detection 2!\n");
+		} else
+			pTAS2557->mnErrCode &= ~ERROR_CLK_DET2;
 
 		goto program;
 	} else {
-		nResult = tas2557_dev_read(pTAS2557, TAS2557_POWER_UP_FLAG_REG, &nDevPowerUpFlag);
-		if (nResult < 0)
-			goto program;
+		dev_dbg(pTAS2557->dev, "IRQ Status: 0x%x, 0x%x\n", nDevInt1Status, nDevInt2Status);
+		nCounter = 2;
+		while (nCounter > 0) {
+			nResult = tas2557_dev_read(pTAS2557, TAS2557_POWER_UP_FLAG_REG, &nDevPowerUpFlag);
+			if (nResult < 0)
+				goto program;
+			if ((nDevPowerUpFlag & 0xc0) == 0xc0)
+				break;
+			nCounter--;
+			if (nCounter > 0) {
+				/* in case check pow status just after power on TAS2557 */
+				dev_dbg(pTAS2557->dev, "PowSts: 0x%x, check again after 10ms\n",
+					nDevPowerUpFlag);
+				msleep(10);
+			}
+		}
 		if ((nDevPowerUpFlag & 0xc0) != 0xc0) {
 			dev_err(pTAS2557->dev, "%s, Critical ERROR B[%d]_P[%d]_R[%d]= 0x%x\n",
 				__func__,

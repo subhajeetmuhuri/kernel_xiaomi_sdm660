@@ -342,7 +342,11 @@ static int tas2557_load_coefficient(struct tas2557_priv *pTAS2557,
 
 	if (nPrevConfig < 0)
 		pPrevConfiguration = NULL;
-	else
+	else if (nPrevConfig == nNewConfig) {
+		dev_dbg(pTAS2557->dev, "%s, config [%d] already loaded\n",
+			__func__, nNewConfig);
+		goto end;
+	} else
 		pPrevConfiguration = &(pTAS2557->mpFirmware->mpConfigurations[nPrevConfig]);
 
 	pNewConfiguration = &(pTAS2557->mpFirmware->mpConfigurations[nNewConfig]);
@@ -1375,7 +1379,9 @@ static int tas2557_load_configuration(struct tas2557_priv *pTAS2557,
 		goto end;
 	}
 
-	if ((nConfiguration == pTAS2557->mnCurrentConfiguration) && (!bLoadSame)) {
+	if ((!pTAS2557->mbLoadConfigurationPrePowerUp)
+		&& (nConfiguration == pTAS2557->mnCurrentConfiguration)
+		&& (!bLoadSame)) {
 		dev_info(pTAS2557->dev, "Configuration %d is already loaded\n",
 			nConfiguration);
 		nResult = 0;
