@@ -326,7 +326,6 @@ static int tas2557_load_coefficient(struct tas2557_priv *pTAS2557,
 	struct TProgram *pProgram;
 	struct TConfiguration *pPrevConfiguration;
 	struct TConfiguration *pNewConfiguration;
-	struct TCalibration *pCalibration = NULL;
 	bool bRestorePower = false;
 
 	if (!pTAS2557->mpFirmware->mnConfigurations) {
