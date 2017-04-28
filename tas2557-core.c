@@ -397,10 +397,7 @@ prog_coefficient:
 		goto end;
 
 	if (pTAS2557->mpCalFirmware->mnCalibrations) {
-		pCalibration = &(pTAS2557->mpCalFirmware->mpCalibrations[pTAS2557->mnCurrentCalibration]);
-		dev_dbg(pTAS2557->dev, "load calibration\n");
-		nResult = tas2557_load_data(pTAS2557, &(pCalibration->mData),
-			TAS2557_BLOCK_CFG_COEFF_DEV_A);
+		nResult = tas2557_set_calibration(pTAS2557, pTAS2557->mnCurrentCalibration);
 		if (nResult < 0)
 			goto end;
 	}
@@ -1803,9 +1800,11 @@ int tas2557_set_calibration(struct tas2557_priv *pTAS2557, int nCalibration)
 	}
 
 	pTAS2557->mnCurrentCalibration = nCalibration;
+	if (pTAS2557->mbLoadConfigurationPrePowerUp)
+		goto end;
+
 	pCalibration = &(pTAS2557->mpCalFirmware->mpCalibrations[nCalibration]);
 	pProgram = &(pTAS2557->mpFirmware->mpPrograms[pTAS2557->mnCurrentProgram]);
-
 	if (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE) {
 		dev_dbg(pTAS2557->dev, "%s, load calibration\n", __func__);
 		nResult = tas2557_load_data(pTAS2557, &(pCalibration->mData), TAS2557_BLOCK_CFG_COEFF_DEV_A);
