@@ -438,6 +438,9 @@ struct tas2557_priv {
 	void (*clearIRQ)(struct tas2557_priv *pTAS2557);
 	void (*enableIRQ)(struct tas2557_priv *pTAS2557, bool enable);
 	void (*hw_reset)(struct tas2557_priv *pTAS2557);
+	/* device is working, but system is suspended */
+	int (*runtime_suspend)(struct tas2557_priv *pTAS2557);
+	int (*runtime_resume)(struct tas2557_priv *pTAS2557);
 
 	int mnGpioINT;
 	struct delayed_work irq_work;
@@ -452,6 +455,9 @@ struct tas2557_priv {
 	unsigned int mnDieTvReadCounter;
 	struct hrtimer mtimer;
 	struct work_struct mtimerwork;
+
+	/* device is working, but system is suspended */
+	bool mbRuntimeSuspend;
 
 	unsigned int mnErrCode;
 #ifdef CONFIG_TAS2557_CODEC

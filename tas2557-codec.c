@@ -84,6 +84,34 @@ static int tas2557_codec_write(struct snd_soc_codec *pCodec, unsigned int nRegis
 	return ret;
 }
 
+static int tas2557_codec_suspend(struct snd_soc_codec *pCodec)
+{
+	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(pCodec);
+	int ret = 0;
+
+	mutex_lock(&pTAS2557->codec_lock);
+
+	dev_dbg(pTAS2557->dev, "%s\n", __func__);
+	pTAS2557->runtime_suspend(pTAS2557);
+
+	mutex_unlock(&pTAS2557->codec_lock);
+	return ret;
+}
+
+static int tas2557_codec_resume(struct snd_soc_codec *pCodec)
+{
+	struct tas2557_priv *pTAS2557 = snd_soc_codec_get_drvdata(pCodec);
+	int ret = 0;
+
+	mutex_lock(&pTAS2557->codec_lock);
+
+	dev_dbg(pTAS2557->dev, "%s\n", __func__);
+	pTAS2557->runtime_resume(pTAS2557);
+
+	mutex_unlock(&pTAS2557->codec_lock);
+	return ret;
+}
+
 static const struct snd_soc_dapm_widget tas2557_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("ASI1", "ASI1 Playback", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_IN("ASI2", "ASI2 Playback", 0, SND_SOC_NOPM, 0, 0),
@@ -459,6 +487,8 @@ static struct snd_soc_codec_driver soc_codec_driver_tas2557 = {
 	.remove = tas2557_codec_remove,
 	.read = tas2557_codec_read,
 	.write = tas2557_codec_write,
+	.suspend = tas2557_codec_suspend,
+	.resume = tas2557_codec_resume,
 	.set_bias_level = tas2557_set_bias_level,
 	.idle_bias_off = true,
 	.controls = tas2557_snd_controls,

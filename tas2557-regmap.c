@@ -389,8 +389,15 @@ static void irq_work_routine(struct work_struct *work)
 	mutex_lock(&pTAS2557->file_lock);
 #endif
 
-	if (!pTAS2557->mbPowerUp)
+	if (pTAS2557->mbRuntimeSuspend) {
+		dev_info(pTAS2557->dev, "%s, Runtime Suspended\n", __func__);
 		goto end;
+	}
+
+	if (!pTAS2557->mbPowerUp) {
+		dev_info(pTAS2557->dev, "%s, device not powered\n", __func__);
+		goto end;
+	}
 
 	if ((!pTAS2557->mpFirmware->mnConfigurations)
 		|| (!pTAS2557->mpFirmware->mnPrograms)) {
@@ -542,6 +549,11 @@ static void timer_work_routine(struct work_struct *work)
 	mutex_lock(&pTAS2557->file_lock);
 #endif
 
+	if (pTAS2557->mbRuntimeSuspend) {
+		dev_info(pTAS2557->dev, "%s, Runtime Suspended\n", __func__);
+		goto end;
+	}
+
 	if (!pTAS2557->mpFirmware->mnConfigurations) {
 		dev_info(pTAS2557->dev, "%s, firmware not loaded\n", __func__);
 		goto end;
@@ -604,23 +616,30 @@ end:
 #endif
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int tas2557_suspend(struct device *dev)
+static int tas2557_runtime_suspend(struct tas2557_priv *pTAS2557)
 {
-	struct tas2557_priv *pTAS2557 = dev_get_drvdata(dev);
-
 	dev_dbg(pTAS2557->dev, "%s\n", __func__);
+
+	pTAS2557->mbRuntimeSuspend = true;
+
 	if (hrtimer_active(&pTAS2557->mtimer)) {
 		dev_dbg(pTAS2557->dev, "cancel die temp timer\n");
 		hrtimer_cancel(&pTAS2557->mtimer);
+	}
+	if (work_pending(&pTAS2557->mtimerwork)) {
+		dev_dbg(pTAS2557->dev, "cancel timer work\n");
+		cancel_work_sync(&pTAS2557->mtimerwork);
+	}
+	if (delayed_work_pending(&pTAS2557->irq_work)) {
+		dev_dbg(pTAS2557->dev, "cancel IRQ work\n");
+		cancel_delayed_work_sync(&pTAS2557->irq_work);
 	}
 
 	return 0;
 }
 
-static int tas2557_resume(struct device *dev)
+static int tas2557_runtime_resume(struct tas2557_priv *pTAS2557)
 {
-	struct tas2557_priv *pTAS2557 = dev_get_drvdata(dev);
 	struct TProgram *pProgram;
 
 	dev_dbg(pTAS2557->dev, "%s\n", __func__);
@@ -629,7 +648,7 @@ static int tas2557_resume(struct device *dev)
 		goto end;
 	}
 
-	if (pTAS2557->mnCurrentProgram >= pTAS2557->mpCalFirmware->mnPrograms) {
+	if (pTAS2557->mnCurrentProgram >= pTAS2557->mpFirmware->mnPrograms) {
 		dev_err(pTAS2557->dev, "%s, firmware corrupted\n", __func__);
 		goto end;
 	}
@@ -644,11 +663,11 @@ static int tas2557_resume(struct device *dev)
 		}
 	}
 
+	pTAS2557->mbRuntimeSuspend = false;
 end:
 
 	return 0;
 }
-#endif
 
 static bool tas2557_volatile(struct device *pDev, unsigned int nRegister)
 {
@@ -724,6 +743,8 @@ static int tas2557_i2c_probe(struct i2c_client *pClient,
 	pTAS2557->set_config = tas2557_set_config;
 	pTAS2557->set_calibration = tas2557_set_calibration;
 	pTAS2557->hw_reset = tas2557_hw_reset;
+	pTAS2557->runtime_suspend = tas2557_runtime_suspend;
+	pTAS2557->runtime_resume = tas2557_runtime_resume;
 
 	mutex_init(&pTAS2557->dev_lock);
 
@@ -847,19 +868,10 @@ static const struct of_device_id tas2557_of_match[] = {
 MODULE_DEVICE_TABLE(of, tas2557_of_match);
 #endif
 
-#ifdef CONFIG_PM_SLEEP
-static const struct dev_pm_ops tas2557_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(tas2557_suspend, tas2557_resume)
-};
-#endif
-
 static struct i2c_driver tas2557_i2c_driver = {
 	.driver = {
 			.name = "tas2557",
 			.owner = THIS_MODULE,
-#ifdef CONFIG_PM_SLEEP
-			.pm = &tas2557_pm_ops,
-#endif
 #if defined(CONFIG_OF)
 			.of_match_table = of_match_ptr(tas2557_of_match),
 #endif
