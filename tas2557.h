@@ -178,6 +178,8 @@
 #define TAS2557_CRYPTIC_REG			TAS2557_REG(0, 253, 71)
 #define TAS2557_PG2P1_CALI_R0_REG		TAS2557_REG(0x8c, 0x2f, 0x40)
 #define TAS2557_PG1P0_CALI_R0_REG		TAS2557_REG(0x8c, 0x2f, 0x28)
+#define TAS2557_PG2P1_CALI_T_REG		TAS2557_REG(0x8c, 0x30, 0x20)
+#define TAS2557_PG1P0_CALI_T_REG		TAS2557_REG(0x8c, 0x30, 0x08)
 
 #define TAS2557_DAC_INTERPOL_REG		TAS2557_REG(100, 0, 1)
 #define TAS2557_SOFT_MUTE_REG			TAS2557_REG(100, 0, 7)
@@ -460,6 +462,12 @@ struct tas2557_priv {
 	bool mbRuntimeSuspend;
 
 	unsigned int mnErrCode;
+
+	/* for configurations with maximum TLimit 0x7fffffff,
+	 * bypass calibration update, usually used in factory test
+	*/
+	bool mbBypassTMax;
+
 #ifdef CONFIG_TAS2557_CODEC
 	struct mutex codec_lock;
 #endif
