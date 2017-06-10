@@ -984,7 +984,7 @@ static int isInPageYRAM(struct tas2557_priv *pTAS2557, struct TYCRC *pCRCData,
 					nResult = 1;
 				}
 			} else {
-				if ((nReg + len) < TAS2557_YRAM3_START_REG)
+				if ((nReg + (len - 1)) < TAS2557_YRAM3_START_REG)
 					nResult = 0;
 				else {
 					pCRCData->mnOffset = TAS2557_YRAM3_START_REG;
@@ -1008,7 +1008,7 @@ static int isInPageYRAM(struct tas2557_priv *pTAS2557, struct TYCRC *pCRCData,
 					nResult = 1;
 				}
 			} else {
-				if ((nReg + len) < TAS2557_YRAM5_START_REG)
+				if ((nReg + (len - 1)) < TAS2557_YRAM5_START_REG)
 					nResult = 0;
 				else {
 					pCRCData->mnOffset = TAS2557_YRAM5_START_REG;
@@ -1039,7 +1039,7 @@ static int isInBlockYRAM(struct tas2557_priv *pTAS2557, struct TYCRC *pCRCData,
 				pCRCData->mnLen = len;
 				nResult = 1;
 			} else {
-				if ((nReg + len) < TAS2557_YRAM2_START_REG)
+				if ((nReg + (len - 1)) < TAS2557_YRAM2_START_REG)
 					nResult = 0;
 				else {
 					pCRCData->mnOffset = TAS2557_YRAM2_START_REG;
@@ -1060,7 +1060,7 @@ static int isInBlockYRAM(struct tas2557_priv *pTAS2557, struct TYCRC *pCRCData,
 				pCRCData->mnLen = len;
 				nResult = 1;
 			} else {
-				if ((nReg + len) < TAS2557_YRAM2_START_REG)
+				if ((nReg + (len - 1)) < TAS2557_YRAM2_START_REG)
 					nResult = 0;
 				else {
 					pCRCData->mnOffset = TAS2557_YRAM2_START_REG;
