@@ -295,7 +295,7 @@ static void failsafe(struct tas2557_priv *pTAS2557)
 	pTAS2557->mnErrCode |= ERROR_FAILSAFE;
 	if (hrtimer_active(&pTAS2557->mtimer))
 		hrtimer_cancel(&pTAS2557->mtimer);
-	pTAS2557->enableIRQ(pTAS2557, false);
+	pTAS2557->enableIRQ(pTAS2557, false, false);
 	tas2557_dev_load_data(pTAS2557, p_tas2557_shutdown_data);
 	pTAS2557->mbPowerUp = false;
 	pTAS2557->hw_reset(pTAS2557);
@@ -365,7 +365,7 @@ static int tas2557_load_coefficient(struct tas2557_priv *pTAS2557,
 			hrtimer_cancel(&pTAS2557->mtimer);
 
 		if (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE)
-			pTAS2557->enableIRQ(pTAS2557, false);
+			pTAS2557->enableIRQ(pTAS2557, false, false);
 
 		nResult = tas2557_dev_load_data(pTAS2557, p_tas2557_shutdown_data);
 		if (nResult < 0)
@@ -422,7 +422,7 @@ prog_coefficient:
 		if (nResult < 0)
 			goto end;
 		if (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE) {
-			pTAS2557->enableIRQ(pTAS2557, true);
+			pTAS2557->enableIRQ(pTAS2557, true, true);
 			if (!hrtimer_active(&pTAS2557->mtimer)) {
 				pTAS2557->mnDieTvReadCounter = 0;
 				hrtimer_start(&pTAS2557->mtimer,
@@ -490,7 +490,7 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 
 			if (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE) {
 				/* turn on IRQ */
-				pTAS2557->enableIRQ(pTAS2557, true);
+				pTAS2557->enableIRQ(pTAS2557, true, true);
 				if (!hrtimer_active(&pTAS2557->mtimer)) {
 					pTAS2557->mnDieTvReadCounter = 0;
 					hrtimer_start(&pTAS2557->mtimer,
@@ -507,7 +507,7 @@ int tas2557_enable(struct tas2557_priv *pTAS2557, bool bEnable)
 			dev_dbg(pTAS2557->dev, "Enable: load shutdown sequence\n");
 			if (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE) {
 				/* turn off IRQ */
-				pTAS2557->enableIRQ(pTAS2557, false);
+				pTAS2557->enableIRQ(pTAS2557, false, false);
 			}
 			nResult = tas2557_dev_load_data(pTAS2557, p_tas2557_shutdown_data);
 			if (nResult < 0)
@@ -1805,7 +1805,7 @@ int tas2557_set_program(struct tas2557_priv *pTAS2557,
 			hrtimer_cancel(&pTAS2557->mtimer);
 
 		if (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE)
-			pTAS2557->enableIRQ(pTAS2557, false);
+			pTAS2557->enableIRQ(pTAS2557, false, false);
 
 		nResult = tas2557_dev_load_data(pTAS2557, p_tas2557_shutdown_data);
 		if (nResult < 0)
@@ -1857,7 +1857,7 @@ int tas2557_set_program(struct tas2557_priv *pTAS2557,
 			goto end;
 
 		if (pProgram->mnAppMode == TAS2557_APP_TUNINGMODE) {
-			pTAS2557->enableIRQ(pTAS2557, true);
+			pTAS2557->enableIRQ(pTAS2557, true, true);
 			if (!hrtimer_active(&pTAS2557->mtimer)) {
 				pTAS2557->mnDieTvReadCounter = 0;
 				hrtimer_start(&pTAS2557->mtimer,
