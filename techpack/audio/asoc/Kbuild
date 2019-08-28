@@ -174,6 +174,10 @@ ifdef CONFIG_QTI_PP
 	PLATFORM_OBJS += msm-qti-pp-config.o
 endif
 
+ifdef CONFIG_ELLIPTICLABS
+	ELLIPTICLABS_OBJS += apr_elliptic.o
+endif
+
 LINUX_INC +=	-Iinclude/linux
 
 INCS +=		$(COMMON_INC) \
@@ -246,3 +250,6 @@ machine_dlkm-y := $(MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_CPE) += cpe_lsm_dlkm.o
 cpe_lsm_dlkm-y := $(CPE_LSM_OBJS)
+
+obj-$(CONFIG_ELLIPTICLABS) += apr_elliptic_dlkm.o
+apr_elliptic_dlkm-y := $(ELLIPTICLABS_OBJS)
