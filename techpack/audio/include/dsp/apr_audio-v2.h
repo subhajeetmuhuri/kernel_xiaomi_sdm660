@@ -2021,6 +2021,32 @@ struct afe_port_cmd_set_param_v3 {
 	u8 param_data[0];
 } __packed;
 
+#ifdef CONFIG_MACH_LONGCHEER
+struct afe_port_param_data_v2 {
+	u32 module_id;
+	/* ID of the module to be configured.
+	 * Supported values: Valid module ID
+	 */
+
+	u32 param_id;
+	/* ID of the parameter corresponding to the supported parameters
+	 * for the module ID.
+	 * Supported values: Valid parameter ID
+	 */
+
+	u16 param_size;
+	/* Actual size of the data for the
+	 * module_id/param_id pair. The size is a
+	 * multiple of four bytes.
+	 * Supported values: > 0
+	 */
+
+	u16 reserved;
+	/* This field must be set to zero.
+	 */
+} __packed;
+#endif
+
 /* Payload of the #AFE_PARAM_ID_LOOPBACK_GAIN_PER_PATH parameter,
  * which gets/sets loopback gain of a port to an Rx port.
  * The Tx port ID of the loopback is part of the set_param command.
@@ -10713,7 +10739,6 @@ struct afe_spkr_prot_calib_get_resp {
 	struct asm_calib_res_cfg res_cfg;
 } __packed;
 
-
 /* SRS TRUMEDIA start */
 /* topology */
 #define SRS_TRUMEDIA_TOPOLOGY_ID			0x00010D90
@@ -11381,7 +11406,7 @@ struct afe_clk_set {
 	 * for enable and disable clock.
 	 *	"clk_freq_in_hz", "clk_attri", and "clk_root"
 	 *	are ignored in disable clock case.
-	 *	@values 
+	 *	@values?
 	 *	- 0 -- Disabled
 	 *	- 1 -- Enabled  @tablebulletend
 	 */
@@ -11462,6 +11487,15 @@ struct afe_digital_clk_cfg {
 /* This field must be set to zero. */
 	u16                  reserved;
 } __packed;
+
+#ifdef CONFIG_MACH_LONGCHEER
+struct afe_lpass_digital_clk_config_command {
+	struct apr_hdr hdr;
+	struct afe_port_cmd_set_param_v2 param;
+	struct afe_port_param_data_v2 pdata;
+	struct afe_digital_clk_cfg clk_cfg;
+} __packed;
+#endif
 
 /*
  * Opcode for AFE to start DTMF.
