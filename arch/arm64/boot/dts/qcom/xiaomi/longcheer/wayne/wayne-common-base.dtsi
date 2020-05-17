@@ -82,3 +82,9 @@
 &dsi_nt36672_tianma_fhd_video {
 	qcom,mdss-brightness-max-level = <4095>;
 };
+
+&soc {
+	qcom,sps {
+		status = "ok";
+	};
+};
