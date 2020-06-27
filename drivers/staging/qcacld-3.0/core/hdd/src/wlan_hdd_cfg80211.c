@@ -21891,12 +21891,14 @@ wlan_hdd_cfg80211_indicate_disconnect(struct hdd_adapter *adapter,
 
 	ieee80211_reason = wlan_hdd_get_cfg80211_disconnect_reason(adapter,
 								   reason);
+#ifdef WLAN_DEBUG
 	hdd_nofl_info("Disconnect reason: %u %s vendor: %u %s LG: %u",
 		      ieee80211_reason,
 		      hdd_ieee80211_reason_code_to_str(ieee80211_reason),
 		      adapter->last_disconnect_reason,
 		      hdd_qca_reason_to_str(adapter->last_disconnect_reason),
 		      locally_generated);
+#endif
 	cfg80211_disconnected(adapter->dev, ieee80211_reason, disconnect_ies,
 			      disconnect_ies_len, locally_generated,
 			      GFP_KERNEL);
@@ -21913,12 +21915,14 @@ wlan_hdd_cfg80211_indicate_disconnect(struct hdd_adapter *adapter,
 
 	ieee80211_reason = wlan_hdd_get_cfg80211_disconnect_reason(adapter,
 								   reason);
+#ifdef WLAN_DEBUG
 	hdd_nofl_info("Disconnect reason: %u %s vendor: %u %s LG: %u",
 		      ieee80211_reason,
 		      hdd_ieee80211_reason_code_to_str(ieee80211_reason),
 		      adapter->last_disconnect_reason,
 		      hdd_qca_reason_to_str(adapter->last_disconnect_reason),
 		      locally_generated);
+#endif
 	cfg80211_disconnected(adapter->dev, ieee80211_reason, disconnect_ies,
 			      disconnect_ies_len, GFP_KERNEL);
 }
