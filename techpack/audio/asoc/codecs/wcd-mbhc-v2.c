@@ -26,9 +26,6 @@
 #include <linux/firmware.h>
 #include <linux/completion.h>
 #include <linux/soc/qcom/fsa4480-i2c.h>
-#ifdef CONFIG_MACH_LONGCHEER
-#include <linux/switch.h>
-#endif
 #include <sound/soc.h>
 #include <sound/jack.h>
 #include "msm-cdc-pinctrl.h"
@@ -36,16 +33,6 @@
 #include "wcd-mbhc-legacy.h"
 #include "wcd-mbhc-adc.h"
 #include "wcd-mbhc-v2-api.h"
-
-#ifdef CONFIG_MACH_LONGCHEER
-/* Add for get headset state tsx 10/19 */
-struct switch_dev sdev;
-#endif
-#if defined(CONFIG_MACH_XIAOMI_WHYRED) || defined(CONFIG_MACH_XIAOMI_WAYNE) || defined(CONFIG_MACH_XIAOMI_TULIP)
-/*Add for selfie stick not work  tangshouxing 9/6*/
-static void wcd_enable_mbhc_supply(struct wcd_mbhc *mbhc,
-			enum wcd_mbhc_plug_type plug_type);
-#endif
 
 void wcd_mbhc_jack_report(struct wcd_mbhc *mbhc,
 			  struct snd_soc_jack *jack, int status, int mask)
@@ -575,10 +562,6 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 
 	pr_debug("%s: enter insertion %d hph_status %x\n",
 		 __func__, insertion, mbhc->hph_status);
-#ifdef CONFIG_MACH_LONGCHEER
-	/* Add for get headset state tsx 10/19 */
-	switch_set_state(&sdev,insertion);
-#endif
 	if (!insertion) {
 		/* Report removal */
 		mbhc->hph_status &= ~jack_type;
@@ -858,7 +841,7 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 				pr_debug("%s: special accessory \n", __func__);
 				/* Toggle switch back */
 				if (mbhc->mbhc_cfg->swap_gnd_mic &&
-					mbhc->mbhc_cfg->swap_gnd_mic(mbhc->codec)) {
+					mbhc->mbhc_cfg->swap_gnd_mic(mbhc->codec, true)) {
 					pr_debug("%s: US_EU gpio present,flip switch again\n"
 						, __func__);
 				}
@@ -897,7 +880,7 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 					pr_debug("tsx_hph_%s: special accessory \n", __func__);
 					/* Toggle switch back */
 					if (mbhc->mbhc_cfg->swap_gnd_mic &&
-						mbhc->mbhc_cfg->swap_gnd_mic(mbhc->codec)) {
+						mbhc->mbhc_cfg->swap_gnd_mic(mbhc->codec, true)) {
 						pr_debug("%s: US_EU gpio present,flip switch again\n"
 							, __func__);
 					}
@@ -1432,13 +1415,6 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 
 	pr_debug("%s: enter\n", __func__);
 	WCD_MBHC_RSC_LOCK(mbhc);
-
-#ifdef CONFIG_MACH_LONGCHEER
-	/* Add for get headset state tsx 10/19 */
-	sdev.name = "h2w";
-	if (switch_dev_register(&sdev) < 0)
-		pr_err("%s,register headset switch fail\n", __func__);
-#endif
 
 	/* enable HS detection */
 	if (mbhc->mbhc_cb->hph_pull_up_control_v2)
