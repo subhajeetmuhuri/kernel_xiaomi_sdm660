@@ -26,13 +26,6 @@
 				0x00 0x18>;
 };
 
-/*
-//msm-pm660.dtsi wayne specific diff
-&pm660_coincell {
-	qcom,charge-enable = <0>;
-};
-*/
-
 &pm660_charger {
 	qcom,usb-icl-ua = <2900000>;
 	qcom,otg-cl-ua = <1500000>;
@@ -68,7 +61,6 @@
 
 /* msm-audio.dtsi wayne specific diff */
 &int_codec {
-	qcom,wsa-disable;
 	/delete-property/ qcom,msm-micbias2-ext-cap;
 };
 
