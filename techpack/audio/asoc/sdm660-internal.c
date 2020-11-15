@@ -2616,16 +2616,8 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.stream_name = "Primary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.0",
 		.platform_name = "msm-pcm-routing",
-#ifdef CONFIG_SND_SOC_TAS2557
-		.codec_name = "tas2557.6-004c",
-		.codec_dai_name = "tas2557 ASI1",
-#elif defined(CONFIG_SND_SOC_MAX98937)
-		.codec_name = "max98927",
-		.codec_dai_name = "max98927-aif1",
-#else
 		.codec_name = "msm-stub-codec.1",
 		.codec_dai_name = "msm-stub-rx",
-#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.id = MSM_BACKEND_DAI_PRI_MI2S_RX,
@@ -3085,7 +3077,7 @@ static struct snd_soc_card *msm_int_populate_sndcard_dailinks(
 {
 	struct snd_soc_card *card = &sdm660_card;
 	struct snd_soc_dai_link *dailink;
-	int len1;
+	int len1, i;
 
 	card->name = dev_name(dev);
 	len1 = ARRAY_SIZE(msm_int_dai);
@@ -3112,6 +3104,12 @@ static struct snd_soc_card *msm_int_populate_sndcard_dailinks(
 		       sizeof(msm_mi2s_be_dai_links));
 		len1 += ARRAY_SIZE(msm_mi2s_be_dai_links);
 	}
+
+	for (i = 0; i < 1; i++) {
+		msm_mi2s_be_dai_links[i].codec_name = "tas2557.6-004c";
+		msm_mi2s_be_dai_links[i].codec_dai_name = "tas2557 ASI1";
+	}
+
 	if (of_property_read_bool(dev->of_node,
 				  "qcom,auxpcm-audio-intf")) {
 		memcpy(dailink + len1,
